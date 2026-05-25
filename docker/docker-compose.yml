@@ -1,0 +1,54 @@
+services:
+
+    frontend:
+        build: ../frontend
+        container_name: hilkebank-frontend
+        restart: unless-stopped
+        expose:
+          - "3000"
+
+    backend:
+        build: ../backend
+        container_name: hilkebank-api
+        restart: unless-stopped
+        env_file:
+          - .env
+        expose:
+          - "8000"
+
+        depends_on:
+          - postgres
+          - redis
+
+    postgres:
+      image: postgres:17
+      container_name: hilkebank-db
+      restart: unless-stopped
+      volumes:
+        - postgres_data:/var/lib/postgresql/data
+        
+      env_file:
+        - .env
+
+    redis:
+      image: redis:8
+      container_name: hilkebank-redis
+      restart: unless-stopped
+
+    celery-worker:
+      build: ../backend
+      command: celery -A config worker -l info
+      restart: unless-stopped
+      env_file:
+        - .env
+
+    celery-beat:
+      build: ./backend
+      command: celery -A config beat -l info
+      restart: unless-stopped
+      env_file:
+        - .env
+
+
+volumes:
+  postgres_data:
