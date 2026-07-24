@@ -78,6 +78,82 @@ class GuardianshipAPITests(APITestCase):
         resp = self.client.post(reverse("guardianships-list"), {"child": child.id})
         self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
 
+    def test_existing_guardian_can_link_a_named_parent_as_co_guardian(self):
+        mom = User.objects.create_user(username="mom", password="pw12345678", role=User.PARENT)
+        dad = User.objects.create_user(username="dad", password="pw12345678", role=User.PARENT)
+        child = User.objects.create_user(username="kid", password="pw12345678", role=User.CHILD)
+        Guardianship.objects.create(parent=mom, child=child)
+
+        self.client.force_authenticate(user=mom)
+        resp = self.client.post(reverse("guardianships-list"), {"child": child.id, "username": "dad"})
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.data)
+        self.assertTrue(Guardianship.objects.filter(parent=dad, child=child).exists())
+
+    def test_non_guardian_cannot_link_someone_else_as_guardian(self):
+        mom = User.objects.create_user(username="mom", password="pw12345678", role=User.PARENT)
+        stranger = User.objects.create_user(username="stranger", password="pw12345678", role=User.PARENT)
+        dad = User.objects.create_user(username="dad", password="pw12345678", role=User.PARENT)
+        child = User.objects.create_user(username="kid", password="pw12345678", role=User.CHILD)
+        Guardianship.objects.create(parent=mom, child=child)
+
+        self.client.force_authenticate(user=stranger)
+        resp = self.client.post(reverse("guardianships-list"), {"child": child.id, "username": "dad"})
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertFalse(Guardianship.objects.filter(parent=dad, child=child).exists())
+
+    def test_link_guardian_rejects_unknown_username(self):
+        mom = User.objects.create_user(username="mom", password="pw12345678", role=User.PARENT)
+        child = User.objects.create_user(username="kid", password="pw12345678", role=User.CHILD)
+        Guardianship.objects.create(parent=mom, child=child)
+
+        self.client.force_authenticate(user=mom)
+        resp = self.client.post(reverse("guardianships-list"), {"child": child.id, "username": "ghost"})
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_link_guardian_rejects_non_parent_username(self):
+        mom = User.objects.create_user(username="mom", password="pw12345678", role=User.PARENT)
+        child = User.objects.create_user(username="kid", password="pw12345678", role=User.CHILD)
+        Guardianship.objects.create(parent=mom, child=child)
+
+        self.client.force_authenticate(user=mom)
+        resp = self.client.post(reverse("guardianships-list"), {"child": child.id, "username": "kid"})
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_link_guardian_rejects_duplicate(self):
+        mom = User.objects.create_user(username="mom", password="pw12345678", role=User.PARENT)
+        dad = User.objects.create_user(username="dad", password="pw12345678", role=User.PARENT)
+        child = User.objects.create_user(username="kid", password="pw12345678", role=User.CHILD)
+        Guardianship.objects.create(parent=mom, child=child)
+        Guardianship.objects.create(parent=dad, child=child)
+
+        self.client.force_authenticate(user=mom)
+        resp = self.client.post(reverse("guardianships-list"), {"child": child.id, "username": "dad"})
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_guardian_can_list_co_guardians_via_child_filter(self):
+        mom = User.objects.create_user(username="mom", password="pw12345678", role=User.PARENT)
+        dad = User.objects.create_user(username="dad", password="pw12345678", role=User.PARENT)
+        child = User.objects.create_user(username="kid", password="pw12345678", role=User.CHILD)
+        Guardianship.objects.create(parent=mom, child=child)
+        Guardianship.objects.create(parent=dad, child=child)
+
+        self.client.force_authenticate(user=mom)
+        resp = self.client.get(reverse("guardianships-list"), {"child": child.id})
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        parents = {row["parent_username"] for row in resp.data}
+        self.assertEqual(parents, {"mom", "dad"})
+
+    def test_non_guardian_cannot_list_co_guardians_via_child_filter(self):
+        mom = User.objects.create_user(username="mom", password="pw12345678", role=User.PARENT)
+        stranger = User.objects.create_user(username="stranger", password="pw12345678", role=User.PARENT)
+        child = User.objects.create_user(username="kid", password="pw12345678", role=User.CHILD)
+        Guardianship.objects.create(parent=mom, child=child)
+
+        self.client.force_authenticate(user=stranger)
+        resp = self.client.get(reverse("guardianships-list"), {"child": child.id})
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(list(resp.data), [])
+
 
 class CreateParentCommandTests(TestCase):
     def test_creates_parent_with_usable_password(self):

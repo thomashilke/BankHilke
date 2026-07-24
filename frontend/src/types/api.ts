@@ -22,6 +22,8 @@ export interface Guardianship {
   created_at: string;
 }
 
+export type LinkGuardianInput = { child: number; username?: string };
+
 export interface Account {
   id: number;
   owner: number;

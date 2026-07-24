@@ -4,11 +4,12 @@ import { useAuth } from "../../auth/useAuth";
 import {
   accountsApi,
   allowanceRulesApi,
+  guardianshipsApi,
   interestRulesApi,
   usersApi,
 } from "../../api/endpoints";
 import { apiErrorMessage } from "../../api/client";
-import type { Account, AllowanceRule, InterestRule, ReconciliationRow, Transaction, User } from "../../types/api";
+import type { Account, AllowanceRule, Guardianship, InterestRule, ReconciliationRow, Transaction, User } from "../../types/api";
 import { NavBar } from "../../components/NavBar";
 import { BalanceCard } from "../../components/BalanceCard";
 import { TransactionTable } from "../../components/TransactionTable";
@@ -16,13 +17,15 @@ import { DepositWithdrawForm } from "../../components/parent/DepositWithdrawForm
 import { AllowanceRuleEditor } from "../../components/parent/AllowanceRuleEditor";
 import { InterestRuleEditor } from "../../components/parent/InterestRuleEditor";
 import { ReconciliationPanel } from "../../components/parent/ReconciliationPanel";
-import { ErrorAlert, Spinner } from "../../components/ui";
+import { LinkGuardianForm } from "../../components/parent/LinkGuardianForm";
+import { ErrorAlert, PrimaryButton, Spinner } from "../../components/ui";
 
 interface ChildState {
   child: User;
   account: Account;
   transactions: Transaction[];
   reconciliation: ReconciliationRow[];
+  guardians: Guardianship[];
   allowanceRule: AllowanceRule | null;
   interestRule: InterestRule | null;
 }
@@ -34,6 +37,7 @@ export function ChildDetail() {
   const [state, setState] = useState<ChildState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showLinkGuardian, setShowLinkGuardian] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -48,9 +52,10 @@ export function ChildDetail() {
       const account = accounts.find((a) => a.owner === childId);
       if (!account) throw new Error("No account found for this child.");
 
-      const [transactions, reconciliation] = await Promise.all([
+      const [transactions, reconciliation, guardians] = await Promise.all([
         accountsApi.history(account.id),
         accountsApi.reconciliation(account.id),
+        guardianshipsApi.listForChild(childId),
       ]);
 
       setState({
@@ -58,6 +63,7 @@ export function ChildDetail() {
         account,
         transactions,
         reconciliation,
+        guardians,
         allowanceRule: allowanceRules.find((r) => r.child === childId) ?? null,
         interestRule: interestRules.find((r) => r.child === childId) ?? null,
       });
@@ -97,7 +103,21 @@ export function ChildDetail() {
                 </h1>
                 <p className="text-sm text-ink-500">@{state.child.username}</p>
               </div>
+              {!showLinkGuardian && (
+                <PrimaryButton onClick={() => setShowLinkGuardian(true)}>+ Link guardian</PrimaryButton>
+              )}
             </div>
+
+            {showLinkGuardian && (
+              <LinkGuardianForm
+                childId={childId}
+                onLinked={() => {
+                  setShowLinkGuardian(false);
+                  load();
+                }}
+                onCancel={() => setShowLinkGuardian(false)}
+              />
+            )}
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
               <div className="space-y-6 lg:col-span-1">
@@ -109,7 +129,7 @@ export function ChildDetail() {
               </div>
 
               <div className="space-y-6 lg:col-span-2">
-                <ReconciliationPanel rows={state.reconciliation} />
+                <ReconciliationPanel rows={state.reconciliation} guardians={state.guardians} />
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                   <AllowanceRuleEditor
                     childId={childId}

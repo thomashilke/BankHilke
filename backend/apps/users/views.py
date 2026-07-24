@@ -1,6 +1,6 @@
 from django.db.models import Q
 from rest_framework import permissions
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.viewsets import ModelViewSet
 
 from api.permissions import IsParent
@@ -55,16 +55,43 @@ class UserViewSet(ModelViewSet):
 
 
 class GuardianshipViewSet(ModelViewSet):
-    """Lets a parent link themselves as an additional guardian of an existing
-    child (e.g. the other parent in a divorced-parents scenario), so both
-    parents' contributions to that child can be reconciled."""
+    """Links a parent to an existing child as an additional guardian (e.g.
+    the other parent in a divorced-parents scenario), so both parents'
+    contributions to that child can be reconciled.
+
+    POST accepts `child` plus an optional `username`: with no `username` the
+    requester links themselves (self-service, requires no prior
+    relationship to the child - matches how a second parent claims a child
+    they already know the id of); with `username`, the requester must
+    already be a guardian of that child and is linking a *different*,
+    already-registered parent as a co-guardian on the child's behalf.
+
+    GET accepts an optional `?child=<id>` filter: if the requester is
+    themselves a guardian of that child, this returns *every* guardian of
+    that child (not just the requester's own link), so the UI can show who
+    else shares responsibility for a child. Without the filter, only the
+    requester's own guardianship links are returned."""
 
     serializer_class = GuardianshipSerializer
     permission_classes = [permissions.IsAuthenticated, IsParent]
     http_method_names = ["get", "post", "delete", "head", "options"]
 
     def get_queryset(self):
-        return Guardianship.objects.filter(parent=self.request.user)
+        own = Guardianship.objects.filter(parent=self.request.user)
+        child_id = self.request.query_params.get("child")
+        if child_id is not None and own.filter(child_id=child_id).exists():
+            return Guardianship.objects.filter(child_id=child_id)
+        return own
 
     def perform_create(self, serializer):
-        serializer.save(parent=self.request.user)
+        requester = self.request.user
+        target_parent = serializer.validated_data.pop("username", None) or requester
+        child = serializer.validated_data["child"]
+
+        if target_parent != requester and not Guardianship.objects.filter(parent=requester, child=child).exists():
+            raise PermissionDenied("you must already be a guardian of this child to link another guardian for them")
+
+        if Guardianship.objects.filter(parent=target_parent, child=child).exists():
+            raise ValidationError({"detail": f"{target_parent.username} is already a guardian of this child"})
+
+        serializer.save(parent=target_parent)

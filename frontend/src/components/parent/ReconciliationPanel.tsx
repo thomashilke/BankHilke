@@ -1,23 +1,31 @@
-import type { ReconciliationRow } from "../../types/api";
+import type { Guardianship, ReconciliationRow } from "../../types/api";
 import { formatCurrency } from "../../lib/format";
 import { Card, CardHeader, EmptyState } from "../ui";
 
 const SHARE_COLORS = ["bg-brand-500", "bg-emerald-500", "bg-amber-500", "bg-violet-500"];
 
-export function ReconciliationPanel({ rows }: { rows: ReconciliationRow[] }) {
+function guardianSubtitle(guardians: Guardianship[]) {
+  if (guardians.length === 0) return undefined;
+  if (guardians.length === 1) return `Sole guardian: ${guardians[0].parent_username}`;
+  return `Guardians: ${guardians.map((g) => g.parent_username).join(", ")}`;
+}
+
+export function ReconciliationPanel({ rows, guardians }: { rows: ReconciliationRow[]; guardians: Guardianship[] }) {
+  const subtitle = guardianSubtitle(guardians);
+
   if (rows.length === 0) {
     return (
       <Card>
-        <CardHeader title="Guardian contributions" />
+        <CardHeader title="Guardian contributions" subtitle={subtitle} />
         <EmptyState>No transactions posted yet.</EmptyState>
       </Card>
     );
   }
 
-  if (rows.length === 1) {
+  if (guardians.length <= 1) {
     return (
       <Card>
-        <CardHeader title="Guardian contributions" subtitle="You are the sole guardian for this child" />
+        <CardHeader title="Guardian contributions" subtitle={subtitle ?? "You are the sole guardian for this child"} />
         <EmptyState>Shared-guardianship reconciliation appears once a second guardian is linked.</EmptyState>
       </Card>
     );
@@ -29,7 +37,7 @@ export function ReconciliationPanel({ rows }: { rows: ReconciliationRow[] }) {
     <Card>
       <CardHeader
         title="Guardian contributions"
-        subtitle="Repartition of deposits, allowance, and interest funding across guardians"
+        subtitle={`${subtitle} \u2014 repartition of deposits, allowance, and interest funding`}
       />
       <div className="px-5 py-4">
         <div className="flex h-3 w-full overflow-hidden rounded-full bg-ink-100">

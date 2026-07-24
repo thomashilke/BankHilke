@@ -6,6 +6,7 @@ import type {
   Guardianship,
   InterestRule,
   InterestRuleInput,
+  LinkGuardianInput,
   ManualTransactionInput,
   ReconciliationRow,
   TokenPair,
@@ -27,6 +28,9 @@ export const usersApi = {
 
 export const guardianshipsApi = {
   list: () => api.get<Guardianship[]>("/guardianships/").then((r) => r.data),
+  listForChild: (childId: number) =>
+    api.get<Guardianship[]>("/guardianships/", { params: { child: childId } }).then((r) => r.data),
+  create: (payload: LinkGuardianInput) => api.post<Guardianship>("/guardianships/", payload).then((r) => r.data),
 };
 
 export const accountsApi = {

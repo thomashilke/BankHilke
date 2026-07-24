@@ -40,13 +40,24 @@ class UserSerializer(serializers.ModelSerializer):
 class GuardianshipSerializer(serializers.ModelSerializer):
     parent_username = serializers.CharField(source="parent.username", read_only=True)
     child_username = serializers.CharField(source="child.username", read_only=True)
+    username = serializers.CharField(
+        write_only=True,
+        required=False,
+        help_text="Username of an existing parent to link as an additional guardian; defaults to the requester (self-link).",
+    )
 
     class Meta:
         model = Guardianship
-        fields = ["id", "parent", "parent_username", "child", "child_username", "created_at"]
+        fields = ["id", "parent", "parent_username", "child", "child_username", "username", "created_at"]
         read_only_fields = ["id", "parent", "created_at"]
 
     def validate_child(self, value):
         if value.role != User.CHILD:
             raise serializers.ValidationError("child must reference a user with role=child")
         return value
+
+    def validate_username(self, value):
+        try:
+            return User.objects.get(username=value, role=User.PARENT)
+        except User.DoesNotExist:
+            raise serializers.ValidationError("no parent account with that username exists")
