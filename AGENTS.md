@@ -11,9 +11,9 @@ balances are always derived from the ledger, never stored/drifting. Allowance
 and interest accruals are scheduled per child and posted automatically by a
 Celery beat + worker pair, catching up on any missed periods after downtime.
 
-The `frontend/` directory exists in the repo tree but is **empty** — this is a
-backend-only implementation; no UI, transaction-approval workflow, or
-child-editable savings plans exist yet (explicitly out of scope for now).
+A React + TypeScript + Tailwind frontend lives in `frontend/` (Vite-built,
+role-gated parent/child dashboards consuming this API; see
+`frontend/README.md` for its own structure and dev workflow).
 
 ## Architecture & Data Flow
 
@@ -78,7 +78,8 @@ child-editable savings plans exist yet (explicitly out of scope for now).
   `LedgerService`, deposit/withdraw API.
 - `backend/apps/allowances/` — `AllowanceRule`, `InterestRule`, scheduling
   helpers, the Celery catch-up task, rule config API.
-- `frontend/` — reserved, currently empty.
+- `frontend/` — React + TypeScript + Tailwind parent/child banking UI (Vite);
+  see `frontend/README.md`.
 
 ## Development Commands
 
