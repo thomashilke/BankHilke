@@ -31,6 +31,26 @@ DEBUG = os.getenv("DEBUG", "True") == "True"
 
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "*").split(",")
 
+# `frontend`'s nginx forwards X-Forwarded-Proto from whichever proxy sits in
+# front of it (a TLS-terminating reverse proxy/load balancer for a real
+# deployment), or omits the header entirely if there is none -- see
+# nginx.conf. Trusting it here lets request.is_secure() reflect the client's
+# real scheme, which Django's CSRF Origin check relies on: without this, a
+# browser at https://your-domain gets rejected because Django computes its
+# own origin as http://your-domain (the scheme it's actually served over
+# behind the proxy) and the two never match. Safe only because the backend
+# should not be reachable except through that proxy chain -- don't publish
+# BACKEND_PORT on a production host without one in front of it.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# Extra origins allowed to make unsafe (POST/PUT/PATCH/DELETE) requests, on
+# top of the automatic same-origin check above -- needed if a fronting proxy
+# doesn't forward the original Host header unchanged. Comma-separated, e.g.
+# "https://bank.example.com". Empty (Django's default) is fine as long as
+# ALLOWED_HOSTS/Host and SECURE_PROXY_SSL_HEADER above already resolve to the
+# same origin the browser sees.
+CSRF_TRUSTED_ORIGINS = [o for o in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if o]
+
 
 # Application definition
 

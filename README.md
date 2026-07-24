@@ -143,6 +143,15 @@ internet-facing:
 - Put TLS termination in front of the `frontend` service (e.g. put it behind
   an existing reverse proxy, or add a Caddy/nginx layer that terminates
   HTTPS and forwards to port 80) — nothing here terminates TLS itself.
+  `frontend`'s nginx forwards whatever `X-Forwarded-Proto` that proxy sets
+  through to the backend unmodified, and `backend/api/settings.py` trusts it
+  (`SECURE_PROXY_SSL_HEADER`) so Django's CSRF check sees the real `https://`
+  origin — without a proxy setting that header, logging into `/admin/` over
+  HTTPS fails CSRF verification. Set `CSRF_TRUSTED_ORIGINS` in `backend/.env`
+  (e.g. `https://bank.example.com`) if your proxy doesn't forward the
+  original `Host` header unchanged. Because this trust is unconditional,
+  don't publish `BACKEND_PORT` on a host reachable from outside your proxy
+  — that would let a direct request spoof `X-Forwarded-Proto` itself.
 - Point `CELERY_BROKER_URL`/`CELERY_RESULT_BACKEND` at a durable, backed-up
   Redis instance if you need queued jobs to survive a host failure (the
   bundled `redis` service has no persistence configured).
