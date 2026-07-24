@@ -3,42 +3,34 @@ URL configuration for api project.
 
 The `urlpatterns` list routes URLs to views. For more information please see:
     https://docs.djangoproject.com/en/6.0/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
-from os import name
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import include, path
 from rest_framework.routers import DefaultRouter
-from rest_framework_simplejwt.views import (TokenObtainPairView, TokenRefreshView, TokenVerifyView)
-
-
-
-from apps.transactions.views import (
-    TransactionViewSet
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+    TokenRefreshView,
+    TokenVerifyView,
 )
+
+from apps.accounts.views import AccountViewSet
+from apps.allowances.views import AllowanceRuleViewSet, InterestRuleViewSet
+from apps.transactions.views import TransactionViewSet
+from apps.users.views import GuardianshipViewSet, UserViewSet
 
 router = DefaultRouter()
 
-router.register(
-    "transactions",
-    TransactionViewSet,
-    basename="transactions"
-)
+router.register("transactions", TransactionViewSet, basename="transactions")
+router.register("accounts", AccountViewSet, basename="accounts")
+router.register("users", UserViewSet, basename="users")
+router.register("guardianships", GuardianshipViewSet, basename="guardianships")
+router.register("allowance-rules", AllowanceRuleViewSet, basename="allowance-rules")
+router.register("interest-rules", InterestRuleViewSet, basename="interest-rules")
 
 urlpatterns = [
-    path(
-        'api/',
-        include(router.urls)),
-    path('api/auth/login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('api/auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    path('api/auth/verify/', TokenVerifyView.as_view(), name='token_verify')
+    path("admin/", admin.site.urls),
+    path("api/", include(router.urls)),
+    path("api/auth/login/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
+    path("api/auth/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    path("api/auth/verify/", TokenVerifyView.as_view(), name="token_verify"),
 ]

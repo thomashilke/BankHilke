@@ -1,48 +1,115 @@
 from django.db import models
+
 from apps.accounts.models import Account
+from apps.users.models import User
 
 
 class Transaction(models.Model):
+    """A single business event (allowance, interest, deposit, withdrawal).
 
-    account = models.ForeignKey(
-        Account,
-        related_name="transactions",
-        on_delete=models.CASCADE
-    )
+    Always posts exactly two LedgerEntry rows (one debit, one credit, equal
+    amount) -- see apps.transactions.services.LedgerService. child_account /
+    parent_account record *which* accounts were on each side so history and
+    parent-to-parent reconciliation queries don't need to inspect entries.
+    """
 
-    description = models.CharField(
-        max_length=200
-    )
-
-    amount = models.DecimalField(
-        max_digits=10,
-        decimal_places=2
-    )
-
-    created_at = models.DateTimeField(
-        auto_now_add=True
-    )
-
+    ALLOWANCE = "allowance"
+    INTEREST = "interest"
+    WITHDRAWAL = "withdrawal"
+    DEPOSIT = "deposit"
     TYPE_CHOICES = [
-        ("credit", "Credit"),
-        ("debit", "Debit"),
+        (ALLOWANCE, "Allowance"),
+        (INTEREST, "Interest"),
+        (WITHDRAWAL, "Withdrawal"),
+        (DEPOSIT, "Deposit"),
     ]
 
     transaction_type = models.CharField(
         max_length=20,
-        choices=TYPE_CHOICES
+        choices=TYPE_CHOICES,
     )
 
-    @property
-    def signed_amount(self):
-        if self.transaction_type == "debit":
-            return -self.amount
-        
-        return self.amount
-    
-    
-    
-    
+    child_account = models.ForeignKey(
+        Account,
+        related_name="child_transactions",
+        on_delete=models.CASCADE,
+    )
+
+    parent_account = models.ForeignKey(
+        Account,
+        related_name="parent_transactions",
+        on_delete=models.CASCADE,
+    )
+
+    amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+    )
+
+    description = models.CharField(
+        max_length=200,
+        blank=True,
+    )
+
+    initiated_by = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        related_name="initiated_transactions",
+        on_delete=models.SET_NULL,
+        help_text="Parent who triggered a manual deposit/withdrawal; null for scheduled events.",
+    )
+
+    idempotency_key = models.CharField(
+        max_length=255,
+        unique=True,
+        help_text="Deterministic for scheduled events (rule id + due timestamp) so replays/catch-up never double-post.",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.transaction_type} {self.amount} ({self.child_account} / {self.parent_account})"
 
 
-# Create your models here.
+class LedgerEntry(models.Model):
+    DEBIT = "debit"
+    CREDIT = "credit"
+    DIRECTION_CHOICES = [
+        (DEBIT, "Debit"),
+        (CREDIT, "Credit"),
+    ]
+
+    transaction = models.ForeignKey(
+        Transaction,
+        related_name="entries",
+        on_delete=models.CASCADE,
+    )
+
+    account = models.ForeignKey(
+        Account,
+        related_name="ledger_entries",
+        on_delete=models.CASCADE,
+    )
+
+    direction = models.CharField(
+        max_length=10,
+        choices=DIRECTION_CHOICES,
+    )
+
+    amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name_plural = "ledger entries"
+
+    def __str__(self):
+        return f"{self.direction} {self.amount} -> {self.account}"

@@ -1,3 +1,6 @@
 from django.contrib import admin
 
-# Register your models here.
+from apps.allowances.models import AllowanceRule, InterestRule
+
+admin.site.register(AllowanceRule)
+admin.site.register(InterestRule)

@@ -1,3 +1,4 @@
 site_package
 .venv
 __pycache__
+*~

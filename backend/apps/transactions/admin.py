@@ -1,3 +1,6 @@
 from django.contrib import admin
 
-# Register your models here.
+from apps.transactions.models import LedgerEntry, Transaction
+
+admin.site.register(Transaction)
+admin.site.register(LedgerEntry)

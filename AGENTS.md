@@ -1,0 +1,222 @@
+# Repository Guidelines
+
+## Project Overview
+
+BankHilke ("hilkebank") is a Django REST API for a family banking app: parents
+act as "the bank" for their children. Each user (parent or child) has an
+`Account`; every money movement (weekly allowance, interest accrual,
+parent-advanced withdrawal, manual deposit) posts a **double-entry**
+transaction — one debit leg and one credit leg of equal amount, so account
+balances are always derived from the ledger, never stored/drifting. Allowance
+and interest accruals are scheduled per child and posted automatically by a
+Celery beat + worker pair, catching up on any missed periods after downtime.
+
+The `frontend/` directory exists in the repo tree but is **empty** — this is a
+backend-only implementation; no UI, transaction-approval workflow, or
+child-editable savings plans exist yet (explicitly out of scope for now).
+
+## Architecture & Data Flow
+
+- Django project package: `backend/api/` (`settings.py`, `urls.py`,
+  `celery.py`, `asgi.py`, `wsgi.py`). The Celery app is `api.celery.app`,
+  exported as `celery_app` from `backend/api/__init__.py` (`celery -A api ...`).
+- Four Django apps under `backend/apps/`:
+  - **`users`** — `User(AbstractUser)` with `role` (`User.PARENT`/`User.CHILD`)
+    and a `pin` field (reserved, not used by the API yet). `Guardianship`
+    links a parent to a child they're financially responsible for; a child
+    can have **multiple** guardians (e.g. divorced parents), which is what
+    makes per-parent reconciliation possible.
+  - **`accounts`** — `Account` (`OneToOneField` to `User`), auto-created for
+    every new `User` via a `post_save` signal (`apps/accounts/signals.py`).
+    `Account.balance` is a `@property` computed on read: sum of `credit`
+    ledger entries minus `debit` entries — never a stored column, so it can
+    never drift from history.
+  - **`transactions`** — the ledger core:
+    - `Transaction` — one row per business event (`allowance` / `interest` /
+      `withdrawal` / `deposit`), recording `child_account`, `parent_account`,
+      `amount`, `initiated_by` (null for scheduled events), and a unique
+      `idempotency_key`.
+    - `LedgerEntry` — exactly two rows per `Transaction` (one `debit`, one
+      `credit`, equal `amount`), each pointing at an `Account`.
+    - `services.LedgerService` — the **only** way transactions get posted
+      (`allowance`, `interest`, `deposit`, `withdrawal` static methods).
+      Allowance/interest/deposit debit the parent and credit the child;
+      withdrawal debits the child and credits the advancing parent.
+      `withdrawal` locks the child's row (`select_for_update`) and rejects
+      amounts exceeding the current balance (`InsufficientFundsError`).
+      Every posting is idempotent: a repeated `idempotency_key` returns the
+      already-posted `Transaction` instead of creating a duplicate (relies on
+      the DB unique constraint + catching `IntegrityError`).
+  - **`allowances`** — per-child schedule configuration and the scheduler:
+    - `AllowanceRule` (weekly: `weekday`/`hour`, `amount`, `funding_parent`)
+      and `InterestRule` (`annual_rate`, `schedule` = weekly or monthly,
+      independently configurable) each carry a `next_run_at` cursor.
+    - `scheduling.py` — pure datetime helpers (`next_weekly_occurrence`,
+      `next_monthly_occurrence`) shared by the model defaults and the task.
+    - `tasks.process_due_accruals` — the Celery task (see beat schedule
+      below). For every enabled rule whose `next_run_at` has passed, it
+      posts via `LedgerService` and advances `next_run_at` to the next
+      occurrence, **looping** until caught up to "now" — this is what makes
+      downtime catch-up and idempotent reprocessing work: posting the
+      transaction and advancing the cursor happen in one DB transaction, so
+      a crash mid-loop simply retries the same unposted period on the next
+      run.
+- Request flow: DRF `ModelViewSet`/`ReadOnlyModelViewSet`s registered on a
+  `DefaultRouter` in `backend/api/urls.py`, mounted under `/api/`.
+- Scheduling flow: `api/celery.py` registers `process_due_accruals` on
+  `app.conf.beat_schedule` via `crontab(minute="*/15")`; `celery-beat` enqueues
+  it, `celery-worker` executes it, both against Redis (`docker-compose.backend-test.yml`).
+
+## Key Directories
+
+- `backend/api/` — Django project config, URL routing, Celery app, shared DRF
+  permission classes (`api/permissions.py`).
+- `backend/apps/users/` — `User`, `Guardianship`, registration + guardianship
+  API.
+- `backend/apps/accounts/` — `Account`, balance/history/reconciliation API.
+- `backend/apps/transactions/` — `Transaction`, `LedgerEntry`,
+  `LedgerService`, deposit/withdraw API.
+- `backend/apps/allowances/` — `AllowanceRule`, `InterestRule`, scheduling
+  helpers, the Celery catch-up task, rule config API.
+- `frontend/` — reserved, currently empty.
+
+## Development Commands
+
+```sh
+make run-backend    # docker compose up -d (backend, postgres, redis, celery-worker, celery-beat) + migrate
+make stop-backend    # docker compose down
+make reload           # restart the backend container
+```
+
+Manual equivalents:
+
+```sh
+python manage.py runserver 0.0.0.0:8000
+python manage.py makemigrations
+python manage.py migrate
+python manage.py test                       # full suite
+python manage.py createsuperuser
+celery -A api worker -l info                # process scheduled accruals
+celery -A api beat -l info                  # dispatch process_due_accruals every 15 min
+```
+
+`docker-compose.backend-test.yml` (the file the Makefile drives) now runs the
+full stack: `backend`, `postgres`, `redis`, `celery-worker`, `celery-beat`.
+The root `docker-compose.yml` is a near-duplicate **not** wired to the
+Makefile — prefer `docker-compose.backend-test.yml`/the Makefile targets.
+
+No lint/format/type-check command is configured (no `pyproject.toml`,
+`.flake8`, `ruff.toml`, etc. — `pyright` is listed in `requirements.txt` but
+has no config driving it).
+
+## Code Conventions & Common Patterns
+
+- App layout is uniform: `models.py`, `serializers.py`, `views.py`,
+  `admin.py`, `apps.py`, `migrations/`; business logic that isn't pure CRUD
+  goes in a `services.py` (see `transactions/services.py`), not inline in the
+  viewset.
+- Imports of app modules use the `apps.<app>.<module>` dotted path (project
+  root on `sys.path` is `backend/`).
+- **Never mutate a balance directly.** All money movement goes through
+  `LedgerService`, which always writes a matched debit+credit pair. If you
+  add a new transaction type, add a method to `LedgerService`, not a
+  standalone `Transaction.objects.create()`.
+- **Idempotency by construction**: any code that posts a transaction outside
+  a direct user request (i.e. anything scheduled/replayable) must pass a
+  deterministic `idempotency_key` (see `f"allowance:{rule.id}:{due_at.isoformat()}"`)
+  so retries/replays are safe.
+- Permission pattern: role checks (`IsParent`/`IsChild` in `api/permissions.py`)
+  gate *who can act*; `Guardianship.objects.filter(parent=..., child=...).exists()`
+  checks gate *which child* they can act on. Both are checked explicitly in
+  each write path (`perform_create`, the `deposit`/`withdraw` actions,
+  `GuardianRuleViewSet`) — DRF's declarative `permission_classes` alone can't
+  express "guardian of this specific child".
+- Derived values are Python `@property`s computed from related rows
+  (`Account.balance`), never stored/cached columns.
+- Env-driven config: `SECRET_KEY`, `DEBUG`, `ALLOWED_HOSTS`, DB credentials,
+  and `CELERY_BROKER_URL`/`CELERY_RESULT_BACKEND` all read from `os.getenv`
+  with dev-safe defaults in `backend/api/settings.py` — follow that pattern
+  for new settings rather than hardcoding.
+
+## Important Files
+
+- `backend/manage.py` — management entrypoint.
+- `backend/api/settings.py` — Django/DRF/Celery/DB configuration.
+- `backend/api/urls.py` — API routing.
+- `backend/api/celery.py` — Celery app + beat schedule.
+- `backend/api/permissions.py` — shared `IsParent`/`IsChild` DRF permissions.
+- `backend/apps/transactions/services.py` — `LedgerService`, the only
+  sanctioned way to move money.
+- `backend/apps/allowances/tasks.py` — `process_due_accruals`, the
+  idempotent catch-up scheduler.
+- `backend/apps/allowances/scheduling.py` — next-occurrence datetime math.
+- `backend/apps/accounts/signals.py` — auto-creates an `Account` for every
+  new `User`.
+- `backend/requirements.txt` — Django 6.0.5, DRF 3.17.1,
+  `djangorestframework_simplejwt`, Celery 5.6.3 + `redis`, `psycopg` 3,
+  `django-guardian`, `django-filter`, `django-cors-headers`.
+- `backend/.env` — `DEBUG`, `SECRET_KEY`, `POSTGRES_*`. Not gitignored —
+  don't put real secrets in it.
+
+## Runtime/Tooling Preferences
+
+- Python 3.13 (`backend/Dockerfile`, `python:3.13-slim`).
+- `pip` + `requirements.txt` (no Poetry/uv/Pipenv).
+- No linter/formatter/pre-commit configured — match existing style (PEP 8,
+  trailing-comma multi-line calls as seen throughout).
+- Docker Compose is the primary way to run the stack; Postgres 17 and Redis 8
+  are required (Celery broker/result backend both point at the `redis`
+  service by default — see `CELERY_BROKER_URL`/`CELERY_RESULT_BACKEND` in
+  `settings.py`).
+
+## API Surface (all under `/api/`, JWT auth via `/api/auth/{login,refresh,verify}/`)
+
+- `POST /users/` — register. `role=parent` is open (`AllowAny`); `role=child`
+  requires an authenticated parent, who becomes the child's first guardian.
+- `GET/PATCH /users/{id}/` — self, or (for a parent) a child they guard.
+- `POST /guardianships/` — an authenticated parent links themselves as an
+  additional guardian of an existing child (divorced-parents reconciliation).
+- `GET /accounts/` — accounts visible to the caller (own + guarded children
+  for a parent; own only for a child).
+- `GET /accounts/{id}/` — current balance.
+- `GET /accounts/{id}/history/` — paginated transaction history.
+- `GET /accounts/{id}/reconciliation/` — child accounts only: per-guardian
+  totals given/taken/net.
+- `GET /transactions/` — history scoped to the caller.
+- `POST /transactions/deposit/`, `POST /transactions/withdraw/` — parent-only,
+  requires the caller to be a guardian of `child_account`'s owner; withdrawal
+  rejects amounts exceeding the current balance.
+- `GET/POST/PATCH /allowance-rules/`, `/interest-rules/` — guardian-only
+  writes, `funding_parent` must itself be a guardian of `child`; children get
+  read-only access to their own rule(s).
+
+## Testing & QA
+
+Django's built-in test runner (`python manage.py test`) — no pytest, no CI
+configured. 34 tests across the four apps:
+
+- `apps/transactions/tests.py` — `LedgerService` double-entry correctness
+  (offsetting debit/credit, balance = allowances + interest + deposits −
+  withdrawals), insufficient-funds rejection, idempotent replay, and
+  deposit/withdraw API permission boundaries (parent-only, guardian-only,
+  history scoping).
+- `apps/allowances/tests.py` — scheduling helper correctness (weekly wrap,
+  monthly short-month clamping), `process_due_accruals` posting + cursor
+  advance, **idempotent rerun** (no double-post), **downtime catch-up**
+  (N missed weekly periods → exactly N transactions, one run), interest
+  accrual amount, and rule-config API permissions (guardian-only writes,
+  `funding_parent` must be a guardian).
+- `apps/users/tests.py` — self-registration (parent, open) vs. gated child
+  creation (parent-only, auto-guardianship), password hashing/login,
+  guardianship linking.
+- `apps/accounts/tests.py` — visibility scoping (child sees only self, parent
+  sees self + guarded children, unrelated parent sees neither), balance,
+  history, and reconciliation correctness.
+
+Run inside the backend container: `docker compose -f
+docker-compose.backend-test.yml exec backend python manage.py test`. `apps`
+needed an `__init__.py` (previously a namespace package) for Django's test
+discovery to find it — already added.
+
+Note: this is dev-stage seed data, no fixtures/factories are set up; each
+test creates its own users/accounts via `User.objects.create_user(...)`.

@@ -1,7 +1,11 @@
+from decimal import Decimal
+
 from django.db import models
+from django.db.models import Q, Sum
+
 from apps.users.models import User
 
-# Create your models here.
+
 class Account(models.Model):
 
     owner = models.OneToOneField(
@@ -16,8 +20,16 @@ class Account(models.Model):
 
     @property
     def balance(self):
+        """Sum of credit ledger entries minus debit ledger entries.
 
-        return sum(
-            t.signed_amount
-            for t in self.transactions.all()
+        Computed on read (never stored) so it can never drift from the
+        transaction/ledger-entry history -- the source of truth.
+        """
+        agg = self.ledger_entries.aggregate(
+            credits=Sum("amount", filter=Q(direction="credit")),
+            debits=Sum("amount", filter=Q(direction="debit")),
         )
+        return (agg["credits"] or Decimal("0.00")) - (agg["debits"] or Decimal("0.00"))
+
+    def __str__(self):
+        return f"{self.owner.username} ({self.owner.role})"

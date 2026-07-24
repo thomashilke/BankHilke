@@ -1,0 +1,10 @@
+#+begin_src http :pretty
+  GET http://localhost:8000/api/?format=json
+#+end_src
+
+#+RESULTS:
+
+
+
+#+begin_src http :pretty
+#+end_src
