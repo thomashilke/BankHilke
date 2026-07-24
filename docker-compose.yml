@@ -1,54 +1,109 @@
+# Full-stack deploy: `docker compose up -d --build` builds and starts
+# everything (Postgres, Redis, Django via gunicorn, Celery worker + beat,
+# and the React frontend behind nginx) and serves the app on
+# http://localhost/ (nginx reverse-proxies /api, /admin, and /static to the
+# backend, so the browser only ever talks to one origin).
+#
+# Secrets/config (SECRET_KEY, POSTGRES_*, ...) come from backend/.env --
+# edit it before deploying anywhere but a trusted local/staging host.
+#
+# For local backend development/testing instead, use
+# docker-compose.backend-test.yml (see AGENTS.md / Makefile) -- it runs
+# Django's dev server with live code reload and isn't meant to be exposed.
+
 services:
 
-    frontend:
-        build: ../frontend
-        container_name: hilkebank-frontend
-        restart: unless-stopped
-        expose:
-          - "3000"
+  postgres:
+    image: postgres:17
+    container_name: hilkebank-db
+    restart: unless-stopped
+    env_file:
+      - backend/.env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
-    backend:
-        build: ../backend
-        container_name: hilkebank-api
-        restart: unless-stopped
-        env_file:
-          - .env
-        expose:
-          - "8000"
+  redis:
+    image: redis:8
+    container_name: hilkebank-redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
-        depends_on:
-          - postgres
-          - redis
+  backend:
+    build: ./backend
+    container_name: hilkebank-api
+    restart: unless-stopped
+    env_file:
+      - backend/.env
+    environment:
+      # Deploy defaults, overriding backend/.env: DEBUG must be off outside
+      # local development regardless of what .env is set to for testing.
+      DEBUG: "False"
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             python manage.py collectstatic --noinput &&
+             gunicorn api.wsgi:application --bind 0.0.0.0:8000 --workers 3"
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('localhost', 8000), timeout=3)"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
-    postgres:
-      image: postgres:17
-      container_name: hilkebank-db
-      restart: unless-stopped
-      volumes:
-        - postgres_data:/var/lib/postgresql/data
-        
-      env_file:
-        - .env
+  celery-worker:
+    build: ./backend
+    container_name: hilkebank-celery-worker
+    command: celery -A api worker -l info
+    restart: unless-stopped
+    env_file:
+      - backend/.env
+    environment:
+      DEBUG: "False"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
-    redis:
-      image: redis:8
-      container_name: hilkebank-redis
-      restart: unless-stopped
+  celery-beat:
+    build: ./backend
+    container_name: hilkebank-celery-beat
+    command: celery -A api beat -l info
+    restart: unless-stopped
+    env_file:
+      - backend/.env
+    environment:
+      DEBUG: "False"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
-    celery-worker:
-      build: ../backend
-      command: celery -A config worker -l info
-      restart: unless-stopped
-      env_file:
-        - .env
-
-    celery-beat:
-      build: ./backend
-      command: celery -A config beat -l info
-      restart: unless-stopped
-      env_file:
-        - .env
-
+  frontend:
+    build: ./frontend
+    container_name: hilkebank-frontend
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-80}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
 
 volumes:
   postgres_data:

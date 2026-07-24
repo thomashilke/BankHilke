@@ -2,3 +2,5 @@ site_package
 .venv
 __pycache__
 *~
+backend/staticfiles/*
+!backend/staticfiles/.gitkeep

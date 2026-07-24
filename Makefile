@@ -8,3 +8,9 @@ stop-backend:
 
 reload:
 	docker compose -f docker-compose.backend-test.yml restart backend
+
+deploy:
+	docker compose up -d --build
+
+undeploy:
+	docker compose down

@@ -22,8 +22,15 @@ bun run lint     # oxlint
 
 The dev server proxies `/api/*` requests to the Django backend (see
 `vite.config.ts`), so no `.env` is required locally as long as the backend
-runs on `localhost:8000` (`make run-backend`). In production, set
-`VITE_API_BASE_URL` if the API isn't served from the same origin.
+runs on `localhost:8000` (`make run-backend`).
+
+For a containerized deploy, `Dockerfile` + `nginx.conf` build this app and
+serve it behind nginx, which reverse-proxies `/api`, `/admin`, and `/static`
+to the backend container — same-origin, so no `VITE_API_BASE_URL` is needed
+there either. See the root `README.md` → Deploying (`docker compose up -d
+--build` from the repo root). `VITE_API_BASE_URL` only matters if you build
+and host this app separately from the API (e.g. static hosting/CDN talking
+to a differently-originated backend).
 
 ## Structure
 
