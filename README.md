@@ -56,6 +56,7 @@ Manual smoke test (with the backend running per above):
 
 ```sh
 bun run dev     # http://localhost:5173, proxies /api -> http://localhost:8000
+                # (override with BACKEND_PORT=<port>, see below, in frontend/.env.local)
 ```
 
 Log in as a parent and a child account and exercise: balance/history/
@@ -74,8 +75,10 @@ That's the whole thing. It builds and starts everything — Postgres, Redis,
 the Django API behind gunicorn, the Celery worker + beat, and the React
 frontend behind nginx — and serves the app at **http://localhost/**
 (override the published port with `HTTP_PORT=8080 docker compose up -d
---build`). `make deploy` / `make undeploy` are shortcuts for `docker compose
-up -d --build` / `docker compose down`.
+--build`, and the backend's own published port -- if something else already
+holds 8000 -- with `BACKEND_PORT=8001 docker compose up -d --build`;
+`docker-compose.backend-test.yml` honors the same `BACKEND_PORT` for local
+dev).
 
 What that one command does, concretely:
 
@@ -105,7 +108,7 @@ This is `docker-compose.yml` at the repo root — distinct from
 Compose project names (`hilkebank-deploy` / `hilkebank-dev`), so bringing
 one up never disturbs containers/volumes belonging to the other — they can
 still collide on published host ports (8000, 5432) if run at the same time,
-so don't do that.
+so don't do that -- or set `BACKEND_PORT` to different values for each stack.
 
 ### First login: create the initial parent
 

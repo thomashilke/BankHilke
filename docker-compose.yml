@@ -61,7 +61,7 @@ services:
              python manage.py collectstatic --noinput &&
              gunicorn api.wsgi:application --bind 0.0.0.0:8000 --workers 3"
     ports:
-      - "8000:8000"
+      - "${BACKEND_PORT:-8000}:8000"
     depends_on:
       postgres:
         condition: service_healthy

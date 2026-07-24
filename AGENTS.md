@@ -117,7 +117,8 @@ nginx, `DEBUG` forced off. Both compose files pin distinct Compose project
 names (`hilkebank-dev` / `hilkebank-deploy`) so they can't silently steal
 each other's containers if both happen to be brought up in the same
 environment -- they can still collide on published ports (8000, 5432) if
-run simultaneously, so don't do that.
+run simultaneously, so don't do that (or override with `BACKEND_PORT=<port>`,
+honored by both compose files -- see README.md).
 
 No lint/format/type-check command is configured (no `pyproject.toml`,
 `.flake8`, `ruff.toml`, etc. — `pyright` is listed in `requirements.txt` but

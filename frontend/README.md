@@ -22,7 +22,10 @@ bun run lint     # oxlint
 
 The dev server proxies `/api/*` requests to the Django backend (see
 `vite.config.ts`), so no `.env` is required locally as long as the backend
-runs on `localhost:8000` (`make run-backend`).
+runs on `localhost:8000` (`make run-backend`). If port 8000 is taken,
+start the backend with `BACKEND_PORT=<port> make run-backend` (or the
+equivalent `docker compose ... up -d`), then point the dev proxy at the same
+port by adding `BACKEND_PORT=<port>` to `frontend/.env.local` (gitignored).
 
 For a containerized deploy, `Dockerfile` + `nginx.conf` build this app and
 serve it behind nginx, which reverse-proxies `/api`, `/admin`, and `/static`

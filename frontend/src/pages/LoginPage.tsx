@@ -28,20 +28,20 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-ink-950 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-ink-50 px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-600 font-mono text-lg font-semibold text-white">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-700 font-mono text-lg font-semibold text-white">
             BH
           </div>
           <div className="text-center">
-            <h1 className="text-lg font-semibold text-white">BankHilke</h1>
+            <h1 className="text-lg font-semibold text-ink-900">BankHilke</h1>
             <p className="text-sm text-ink-400">Family allowance banking</p>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="rounded-xl border border-ink-800 bg-ink-900 p-6 shadow-xl">
-          <h2 className="mb-4 text-sm font-semibold text-white">Sign in to your account</h2>
+        <form onSubmit={handleSubmit} className="rounded-xl border border-ink-200 bg-white p-6 shadow-sm shadow-ink-900/[0.02]">
+          <h2 className="mb-4 text-sm font-semibold text-ink-900">Sign in to your account</h2>
 
           {error && (
             <div className="mb-4">
