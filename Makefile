@@ -9,6 +9,9 @@ stop-backend:
 reload:
 	docker compose -f docker-compose.backend-test.yml restart backend
 
+create-parent:
+	docker compose -f docker-compose.backend-test.yml exec backend ./scripts/create_initial_parent.sh
+
 deploy:
 	docker compose up -d --build
 

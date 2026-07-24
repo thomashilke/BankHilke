@@ -88,6 +88,7 @@ role-gated parent/child dashboards consuming this API; see
 make run-backend    # docker compose up -d (backend, postgres, redis, celery-worker, celery-beat) + migrate
 make stop-backend    # docker compose down
 make reload           # restart the backend container
+make create-parent   # bootstrap/reset the first parent login; see README.md
 make deploy          # full-stack production-ish deploy: docker compose up -d --build
                       # (backend/gunicorn, frontend/nginx, postgres, redis, celery); see README.md
 make undeploy         # docker compose down

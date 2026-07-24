@@ -31,6 +31,10 @@ rejection, idempotent/catch-up scheduling, and permission boundaries (see
 `AGENTS.md` → Testing & QA for the breakdown). Tear down with
 `make stop-backend`.
 
+There's no seed data on a fresh database, so create the first login with
+`backend/scripts/create_initial_parent.sh` (wraps `manage.py create_parent`
+— see below).
+
 Outside Docker: `cd backend && pip install -r requirements.txt && python
 manage.py test` (needs a reachable Postgres + `backend/.env` configured, or
 point `DATABASES` at SQLite for a quick local run).
@@ -99,6 +103,26 @@ This is `docker-compose.yml` at the repo root — distinct from
 `runserver` with live code reload via a bind mount, backend-only, driven by
 `make run-backend`/`make stop-backend`). Don't run both at once; they'd
 collide on ports 8000/5432.
+
+### First login: create the initial parent
+
+A fresh database has no users, and children can't self-register (only a
+parent can create them, becoming their guardian) — so there's a
+chicken-and-egg problem on first boot. `backend/scripts/create_initial_parent.sh`
+(a thin wrapper around the `create_parent` management command) breaks it:
+
+```sh
+docker compose exec backend ./scripts/create_initial_parent.sh
+# dev stack instead: make create-parent
+```
+
+Prompts for a username/password if not already set via
+`INITIAL_PARENT_USERNAME`/`INITIAL_PARENT_PASSWORD` (see `backend/.env` for
+the full list of `INITIAL_PARENT_*` vars, incl. `--superuser` for Django
+admin access). Safe to re-run: an existing parent with that username gets
+its password/email/name updated rather than erroring, so it also works as a
+password reset. Log in with those credentials in the frontend, then use its
+dashboard to add children normally.
 
 ### Before deploying anywhere but a trusted local/staging host
 
