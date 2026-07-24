@@ -11,6 +11,15 @@
 # docker-compose.backend-test.yml (see AGENTS.md / Makefile) -- it runs
 # Django's dev server with live code reload and isn't meant to be exposed.
 
+# Pinned project name: without this, Compose infers the project name from
+# the directory ("bankhilke"), which is exactly what docker-compose.backend-
+# test.yml also infers -- the two stacks would then collide on every shared
+# service name (backend, postgres, redis, celery-worker, celery-beat),
+# silently replacing each other's containers if both are ever brought up
+# in the same environment. Pinning distinct names makes them fully
+# independent projects.
+name: hilkebank-deploy
+
 services:
 
   postgres:
@@ -107,3 +116,6 @@ services:
 
 volumes:
   postgres_data:
+    # Pinned to the volume name Compose already created under the previous
+    # (directory-inferred) project name, so existing data isn't orphaned.
+    name: bankhilke_postgres_data

@@ -101,8 +101,11 @@ What that one command does, concretely:
 This is `docker-compose.yml` at the repo root — distinct from
 `docker-compose.backend-test.yml`, which is the dev-mode stack (Django's
 `runserver` with live code reload via a bind mount, backend-only, driven by
-`make run-backend`/`make stop-backend`). Don't run both at once; they'd
-collide on ports 8000/5432.
+`make run-backend`/`make stop-backend`). Both compose files pin distinct
+Compose project names (`hilkebank-deploy` / `hilkebank-dev`), so bringing
+one up never disturbs containers/volumes belonging to the other — they can
+still collide on published host ports (8000, 5432) if run at the same time,
+so don't do that.
 
 ### First login: create the initial parent
 

@@ -1,3 +1,11 @@
+# Pinned project name: without this, Compose infers the project name from
+# the directory ("bankhilke"), same as the deploy stack's docker-compose.yml
+# -- the two would then collide on every shared service name (backend,
+# postgres, redis, celery-worker, celery-beat), silently replacing each
+# other's containers if both are ever brought up in the same environment.
+# Pinning distinct names makes them fully independent projects.
+name: hilkebank-dev
+
 services:
 
   backend:
@@ -9,8 +17,10 @@ services:
       - ./backend/.env
 
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
     restart: unless-stopped
 
@@ -25,10 +35,20 @@ services:
       - ./backend/.env
     volumes:
       - pg_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   redis:
     image: redis:8
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   celery-worker:
     build: ./backend
@@ -36,8 +56,10 @@ services:
     env_file:
       - ./backend/.env
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     restart: unless-stopped
     volumes:
       - ./backend:/app
@@ -48,12 +70,17 @@ services:
     env_file:
       - ./backend/.env
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     restart: unless-stopped
     volumes:
       - ./backend:/app
 
 
 volumes:
-    pg_data:
+  pg_data:
+    # Pinned to the volume name Compose already created under the previous
+    # (directory-inferred) project name, so existing data isn't orphaned.
+    name: bankhilke_pg_data

@@ -101,15 +101,23 @@ python manage.py runserver 0.0.0.0:8000
 python manage.py makemigrations
 python manage.py migrate
 python manage.py test                       # full suite
-python manage.py createsuperuser
+python manage.py create_parent               # bootstrap/reset the first parent login (see README.md)
+python manage.py createsuperuser              # Django admin login -- note: leaves `role` unset, unlike create_parent
 celery -A api worker -l info                # process scheduled accruals
 celery -A api beat -l info                  # dispatch process_due_accruals every 15 min
 ```
 
-`docker-compose.backend-test.yml` (the file the Makefile drives) now runs the
-full stack: `backend`, `postgres`, `redis`, `celery-worker`, `celery-beat`.
-The root `docker-compose.yml` is a near-duplicate **not** wired to the
-Makefile — prefer `docker-compose.backend-test.yml`/the Makefile targets.
+`docker-compose.backend-test.yml` (the file the Makefile's `run-backend`/
+`stop-backend`/`reload`/`create-parent` targets drive) runs the full dev
+stack: `backend` (live-reload `runserver`), `postgres`, `redis`,
+`celery-worker`, `celery-beat`. The root `docker-compose.yml` (driven by
+`make deploy`/`make undeploy`) is the production-ish stack instead:
+gunicorn + WhiteNoise-served static assets, the React frontend behind
+nginx, `DEBUG` forced off. Both compose files pin distinct Compose project
+names (`hilkebank-dev` / `hilkebank-deploy`) so they can't silently steal
+each other's containers if both happen to be brought up in the same
+environment -- they can still collide on published ports (8000, 5432) if
+run simultaneously, so don't do that.
 
 No lint/format/type-check command is configured (no `pyproject.toml`,
 `.flake8`, `ruff.toml`, etc. — `pyright` is listed in `requirements.txt` but
