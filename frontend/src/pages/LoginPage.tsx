@@ -1,9 +1,11 @@
 import { useState, type FormEvent } from "react";
 import { Navigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/useAuth";
 import { PrimaryButton, Label, inputClass, ErrorAlert } from "../components/ui";
 
 export function LoginPage() {
+  const { t } = useTranslation();
   const { user, status, login } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -21,7 +23,7 @@ export function LoginPage() {
     try {
       await login(username, password);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Sign in failed.");
+      setError(err instanceof Error ? err.message : t("login.genericError"));
     } finally {
       setSubmitting(false);
     }
@@ -36,12 +38,12 @@ export function LoginPage() {
           </div>
           <div className="text-center">
             <h1 className="text-lg font-semibold text-ink-900">BankHilke</h1>
-            <p className="text-sm text-ink-400">Family allowance banking</p>
+            <p className="text-sm text-ink-400">{t("common.tagline")}</p>
           </div>
         </div>
 
         <form onSubmit={handleSubmit} className="rounded-xl border border-ink-200 bg-white p-6 shadow-sm shadow-ink-900/[0.02]">
-          <h2 className="mb-4 text-sm font-semibold text-ink-900">Sign in to your account</h2>
+          <h2 className="mb-4 text-sm font-semibold text-ink-900">{t("login.heading")}</h2>
 
           {error && (
             <div className="mb-4">
@@ -50,7 +52,7 @@ export function LoginPage() {
           )}
 
           <div className="mb-4">
-            <Label>Username</Label>
+            <Label>{t("common.username")}</Label>
             <input
               autoFocus
               autoComplete="username"
@@ -62,7 +64,7 @@ export function LoginPage() {
           </div>
 
           <div className="mb-6">
-            <Label>Password</Label>
+            <Label>{t("common.password")}</Label>
             <input
               type="password"
               autoComplete="current-password"
@@ -74,13 +76,11 @@ export function LoginPage() {
           </div>
 
           <PrimaryButton type="submit" className="w-full" disabled={submitting}>
-            {submitting ? "Signing in\u2026" : "Sign in"}
+            {submitting ? t("login.submitting") : t("login.submit")}
           </PrimaryButton>
         </form>
 
-        <p className="mt-6 text-center text-xs text-ink-500">
-          Parent and child accounts share this sign-in page &mdash; access is scoped by role.
-        </p>
+        <p className="mt-6 text-center text-xs text-ink-500">{t("login.footnote")}</p>
       </div>
     </div>
   );

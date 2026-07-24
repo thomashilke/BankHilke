@@ -1,23 +1,33 @@
-import type { Guardianship, ReconciliationRow } from "../../types/api";
+import { useTranslation } from "react-i18next";
+import type { Currency, Guardianship, ReconciliationRow } from "../../types/api";
 import { formatCurrency } from "../../lib/format";
 import { Card, CardHeader, EmptyState } from "../ui";
 
 const SHARE_COLORS = ["bg-brand-500", "bg-emerald-500", "bg-amber-500", "bg-violet-500"];
 
-function guardianSubtitle(guardians: Guardianship[]) {
-  if (guardians.length === 0) return undefined;
-  if (guardians.length === 1) return `Sole guardian: ${guardians[0].parent_username}`;
-  return `Guardians: ${guardians.map((g) => g.parent_username).join(", ")}`;
-}
+export function ReconciliationPanel({
+  rows,
+  guardians,
+  currency,
+}: {
+  rows: ReconciliationRow[];
+  guardians: Guardianship[];
+  currency: Currency;
+}) {
+  const { t } = useTranslation();
 
-export function ReconciliationPanel({ rows, guardians }: { rows: ReconciliationRow[]; guardians: Guardianship[] }) {
-  const subtitle = guardianSubtitle(guardians);
+  const subtitle =
+    guardians.length === 0
+      ? undefined
+      : guardians.length === 1
+        ? t("reconciliation.soleGuardian", { name: guardians[0].parent_username })
+        : t("reconciliation.guardiansList", { names: guardians.map((g) => g.parent_username).join(", ") });
 
   if (rows.length === 0) {
     return (
       <Card>
-        <CardHeader title="Guardian contributions" subtitle={subtitle} />
-        <EmptyState>No transactions posted yet.</EmptyState>
+        <CardHeader title={t("reconciliation.title")} subtitle={subtitle} />
+        <EmptyState>{t("reconciliation.noTransactions")}</EmptyState>
       </Card>
     );
   }
@@ -25,8 +35,8 @@ export function ReconciliationPanel({ rows, guardians }: { rows: ReconciliationR
   if (guardians.length <= 1) {
     return (
       <Card>
-        <CardHeader title="Guardian contributions" subtitle={subtitle ?? "You are the sole guardian for this child"} />
-        <EmptyState>Shared-guardianship reconciliation appears once a second guardian is linked.</EmptyState>
+        <CardHeader title={t("reconciliation.title")} subtitle={subtitle ?? t("reconciliation.soleGuardianFallback")} />
+        <EmptyState>{t("reconciliation.sharedAppearsNote")}</EmptyState>
       </Card>
     );
   }
@@ -36,8 +46,8 @@ export function ReconciliationPanel({ rows, guardians }: { rows: ReconciliationR
   return (
     <Card>
       <CardHeader
-        title="Guardian contributions"
-        subtitle={`${subtitle} \u2014 repartition of deposits, allowance, and interest funding`}
+        title={t("reconciliation.title")}
+        subtitle={t("reconciliation.repartitionSubtitle", { subtitle })}
       />
       <div className="px-5 py-4">
         <div className="flex h-3 w-full overflow-hidden rounded-full bg-ink-100">
@@ -46,7 +56,7 @@ export function ReconciliationPanel({ rows, guardians }: { rows: ReconciliationR
               key={row.parent_id}
               className={SHARE_COLORS[index % SHARE_COLORS.length]}
               style={{ width: `${(row.total_given / totalGiven) * 100}%` }}
-              title={`${row.parent_username}: ${formatCurrency(row.total_given)}`}
+              title={t("reconciliation.segmentTitle", { name: row.parent_username, amount: formatCurrency(row.total_given, currency) })}
             />
           ))}
         </div>
@@ -54,11 +64,11 @@ export function ReconciliationPanel({ rows, guardians }: { rows: ReconciliationR
         <table className="mt-4 w-full text-sm">
           <thead>
             <tr className="text-left text-xs uppercase tracking-wide text-ink-400">
-              <th className="py-2 font-medium">Guardian</th>
-              <th className="py-2 text-right font-medium">Given</th>
-              <th className="py-2 text-right font-medium">Withdrawn</th>
-              <th className="py-2 text-right font-medium">Net</th>
-              <th className="py-2 text-right font-medium">Share</th>
+              <th className="py-2 font-medium">{t("reconciliation.guardianCol")}</th>
+              <th className="py-2 text-right font-medium">{t("reconciliation.givenCol")}</th>
+              <th className="py-2 text-right font-medium">{t("reconciliation.withdrawnCol")}</th>
+              <th className="py-2 text-right font-medium">{t("reconciliation.netCol")}</th>
+              <th className="py-2 text-right font-medium">{t("reconciliation.shareCol")}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-ink-100">
@@ -71,13 +81,13 @@ export function ReconciliationPanel({ rows, guardians }: { rows: ReconciliationR
                   </span>
                 </td>
                 <td className="py-2.5 text-right font-mono tabular text-emerald-600">
-                  {formatCurrency(row.total_given)}
+                  {formatCurrency(row.total_given, currency)}
                 </td>
                 <td className="py-2.5 text-right font-mono tabular text-red-600">
-                  {formatCurrency(row.total_taken)}
+                  {formatCurrency(row.total_taken, currency)}
                 </td>
                 <td className="py-2.5 text-right font-mono tabular font-medium text-ink-900">
-                  {formatCurrency(row.net_contribution)}
+                  {formatCurrency(row.net_contribution, currency)}
                 </td>
                 <td className="py-2.5 text-right text-ink-500">
                   {((row.total_given / totalGiven) * 100).toFixed(0)}%

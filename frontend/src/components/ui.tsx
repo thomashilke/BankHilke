@@ -1,4 +1,5 @@
 import type { HTMLAttributes, ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 
 export function Card({ className = "", children, ...rest }: HTMLAttributes<HTMLDivElement>) {
   return (
@@ -33,7 +34,7 @@ export function EmptyState({ children }: { children: ReactNode }) {
   return <p className="px-5 py-8 text-center text-sm text-ink-400">{children}</p>;
 }
 
-export function Spinner({ label = "Loading" }: { label?: string }) {
+export function Spinner({ label }: { label: string }) {
   return (
     <div className="flex items-center gap-2 px-5 py-8 text-sm text-ink-400">
       <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-ink-300 border-t-brand-600" />
@@ -50,10 +51,11 @@ const TYPE_BADGE_STYLES: Record<string, string> = {
 };
 
 export function TransactionTypeBadge({ type }: { type: string }) {
+  const { t } = useTranslation();
   const style = TYPE_BADGE_STYLES[type] ?? "bg-ink-100 text-ink-600 ring-1 ring-inset ring-ink-200";
   return (
     <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize ${style}`}>
-      {type}
+      {t(`transactionType.${type}`)}
     </span>
   );
 }

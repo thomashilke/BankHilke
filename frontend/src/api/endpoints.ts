@@ -3,9 +3,11 @@ import type {
   Account,
   AllowanceRule,
   AllowanceRuleInput,
+  Currency,
   Guardianship,
   InterestRule,
   InterestRuleInput,
+  Language,
   LinkGuardianInput,
   ManualTransactionInput,
   ReconciliationRow,
@@ -22,8 +24,18 @@ export const authApi = {
 export const usersApi = {
   me: (userId: number) => api.get<User>(`/users/${userId}/`).then((r) => r.data),
   list: () => api.get<User[]>("/users/").then((r) => r.data),
-  registerChild: (payload: { username: string; password: string; email?: string; first_name?: string; last_name?: string }) =>
-    api.post<User>("/users/", { ...payload, role: "child" }).then((r) => r.data),
+  registerChild: (payload: {
+    username: string;
+    password: string;
+    email?: string;
+    first_name?: string;
+    last_name?: string;
+    currency?: Currency;
+  }) => api.post<User>("/users/", { ...payload, role: "child" }).then((r) => r.data),
+  registerParent: (payload: { username: string; password: string; email?: string; first_name?: string; last_name?: string }) =>
+    api.post<User>("/users/", { ...payload, role: "parent" }).then((r) => r.data),
+  update: (userId: number, payload: { language: Language }) =>
+    api.patch<User>(`/users/${userId}/`, payload).then((r) => r.data),
 };
 
 export const guardianshipsApi = {
@@ -38,6 +50,8 @@ export const accountsApi = {
   history: (accountId: number) => api.get<Transaction[]>(`/accounts/${accountId}/history/`).then((r) => r.data),
   reconciliation: (accountId: number) =>
     api.get<ReconciliationRow[]>(`/accounts/${accountId}/reconciliation/`).then((r) => r.data),
+  updateCurrency: (accountId: number, currency: Currency) =>
+    api.patch<Account>(`/accounts/${accountId}/currency/`, { currency }).then((r) => r.data),
 };
 
 export const transactionsApi = {

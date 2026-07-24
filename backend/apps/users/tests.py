@@ -49,6 +49,68 @@ class RegistrationTests(APITestCase):
         self.assertTrue(Guardianship.objects.filter(parent=parent, child=child).exists())
         self.assertTrue(Account.objects.filter(owner=child).exists())
 
+    def test_child_account_currency_defaults_to_usd(self):
+        parent = User.objects.create_user(username="parent", password="pw12345678", role=User.PARENT)
+        self.client.force_authenticate(user=parent)
+        resp = self.client.post(reverse("users-list"), {
+            "username": "kid", "password": "pw12345678", "role": User.CHILD,
+        })
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.data)
+        child = User.objects.get(username="kid")
+        self.assertEqual(child.account.currency, Account.Currency.USD)
+
+    def test_parent_can_choose_currency_for_new_child_account(self):
+        parent = User.objects.create_user(username="parent", password="pw12345678", role=User.PARENT)
+        self.client.force_authenticate(user=parent)
+        resp = self.client.post(reverse("users-list"), {
+            "username": "kid", "password": "pw12345678", "role": User.CHILD, "currency": "CHF",
+        })
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.data)
+        child = User.objects.get(username="kid")
+        self.assertEqual(child.account.currency, Account.Currency.CHF)
+
+    def test_invalid_currency_is_rejected(self):
+        parent = User.objects.create_user(username="parent", password="pw12345678", role=User.PARENT)
+        self.client.force_authenticate(user=parent)
+        resp = self.client.post(reverse("users-list"), {
+            "username": "kid", "password": "pw12345678", "role": User.CHILD, "currency": "XXX",
+        })
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_new_user_language_defaults_to_english(self):
+        parent = User.objects.create_user(username="parent", password="pw12345678", role=User.PARENT)
+        self.client.force_authenticate(user=parent)
+        resp = self.client.post(reverse("users-list"), {
+            "username": "kid", "password": "pw12345678", "role": User.CHILD,
+        })
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.data)
+        self.assertEqual(resp.data["language"], User.Language.EN)
+
+    def test_parent_can_choose_language_for_new_child_account(self):
+        parent = User.objects.create_user(username="parent", password="pw12345678", role=User.PARENT)
+        self.client.force_authenticate(user=parent)
+        resp = self.client.post(reverse("users-list"), {
+            "username": "kid", "password": "pw12345678", "role": User.CHILD, "language": "fr",
+        })
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.data)
+        self.assertEqual(User.objects.get(username="kid").language, User.Language.FR)
+
+    def test_invalid_language_is_rejected(self):
+        parent = User.objects.create_user(username="parent", password="pw12345678", role=User.PARENT)
+        self.client.force_authenticate(user=parent)
+        resp = self.client.post(reverse("users-list"), {
+            "username": "kid", "password": "pw12345678", "role": User.CHILD, "language": "xx",
+        })
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_user_can_update_their_own_language(self):
+        child = User.objects.create_user(username="kid", password="pw12345678", role=User.CHILD)
+        self.client.force_authenticate(user=child)
+        resp = self.client.patch(reverse("users-detail", args=[child.id]), {"language": "de"})
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.data)
+        child.refresh_from_db()
+        self.assertEqual(child.language, User.Language.DE)
+
     def test_child_cannot_create_another_child_account(self):
         parent = User.objects.create_user(username="parent", password="pw12345678", role=User.PARENT)
         child = User.objects.create_user(username="kid", password="pw12345678", role=User.CHILD)
@@ -153,6 +215,52 @@ class GuardianshipAPITests(APITestCase):
         resp = self.client.get(reverse("guardianships-list"), {"child": child.id})
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertEqual(list(resp.data), [])
+
+
+class AdminParentCreationTests(APITestCase):
+    def test_staff_parent_can_create_another_parent(self):
+        admin = User.objects.create_user(
+            username="admin", password="pw12345678", role=User.PARENT, is_staff=True,
+        )
+        self.client.force_authenticate(user=admin)
+        resp = self.client.post(reverse("users-list"), {
+            "username": "newparent", "password": "pw12345678", "role": User.PARENT,
+        })
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.data)
+        new_parent = User.objects.get(username="newparent")
+        self.assertEqual(new_parent.role, User.PARENT)
+        self.assertTrue(Account.objects.filter(owner=new_parent).exists())
+        # Administrative rights are never inferred client-side, and the API
+        # never lets a request grant them to the account it creates.
+        self.assertFalse(new_parent.is_staff)
+
+    def test_non_staff_parent_cannot_create_another_parent(self):
+        parent = User.objects.create_user(username="parent", password="pw12345678", role=User.PARENT)
+        self.client.force_authenticate(user=parent)
+        resp = self.client.post(reverse("users-list"), {
+            "username": "newparent", "password": "pw12345678", "role": User.PARENT,
+        })
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertFalse(User.objects.filter(username="newparent").exists())
+
+    def test_authenticated_child_cannot_create_a_parent(self):
+        child = User.objects.create_user(username="kid", password="pw12345678", role=User.CHILD)
+        self.client.force_authenticate(user=child)
+        resp = self.client.post(reverse("users-list"), {
+            "username": "newparent", "password": "pw12345678", "role": User.PARENT,
+        })
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_is_staff_cannot_be_set_via_the_api(self):
+        admin = User.objects.create_user(
+            username="admin", password="pw12345678", role=User.PARENT, is_staff=True,
+        )
+        self.client.force_authenticate(user=admin)
+        resp = self.client.post(reverse("users-list"), {
+            "username": "newparent", "password": "pw12345678", "role": User.PARENT, "is_staff": True,
+        })
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.data)
+        self.assertFalse(User.objects.get(username="newparent").is_staff)
 
 
 class CreateParentCommandTests(TestCase):

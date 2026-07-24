@@ -43,6 +43,20 @@ class AccountViewSet(ReadOnlyModelViewSet):
             return self.get_paginated_response(serializer.data)
         return Response(serializer.data)
 
+    @action(detail=True, methods=["patch"])
+    def currency(self, request, pk=None):
+        """Change the account's display currency. Callable by the account
+        owner or any parent guardian of the owner -- `get_queryset` already
+        scopes `get_object` to that set. Purely cosmetic: the ledger never
+        converts between currencies, so no balances are touched."""
+        account = self.get_object()
+        value = request.data.get("currency")
+        if value not in Account.Currency.values:
+            return Response({"currency": ["Not a valid choice."]}, status=400)
+        account.currency = value
+        account.save(update_fields=["currency"])
+        return Response(self.get_serializer(account).data)
+
     @action(detail=True, methods=["get"])
     def reconciliation(self, request, pk=None):
         """For a child account: per-funding-parent totals given/taken, so

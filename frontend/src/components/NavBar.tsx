@@ -1,6 +1,9 @@
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/useAuth";
+import { LanguageSwitcher } from "./LanguageSwitcher";
 
 export function NavBar() {
+  const { t } = useTranslation();
   const { user, logout } = useAuth();
   if (!user) return null;
 
@@ -15,14 +18,15 @@ export function NavBar() {
           </div>
           <div>
             <p className="text-sm font-semibold tracking-tight text-ink-900">BankHilke</p>
-            <p className="text-xs text-ink-400">Family allowance banking</p>
+            <p className="text-xs text-ink-400">{t("common.tagline")}</p>
           </div>
         </div>
 
         <div className="flex items-center gap-4">
           <span className="hidden rounded-full bg-ink-100 px-2.5 py-1 text-xs font-medium uppercase tracking-wide text-ink-500 sm:inline-block">
-            {user.role}
+            {t(`role.${user.role}`)}
           </span>
+          <LanguageSwitcher />
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-ink-800 text-xs font-semibold text-white">
               {initials}
@@ -36,7 +40,7 @@ export function NavBar() {
             onClick={logout}
             className="rounded-md border border-ink-200 px-3 py-1.5 text-sm font-medium text-ink-600 transition hover:border-ink-300 hover:bg-ink-50"
           >
-            Sign out
+            {t("nav.signOut")}
           </button>
         </div>
       </div>

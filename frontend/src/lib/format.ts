@@ -1,48 +1,86 @@
-const currencyFormatter = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-});
+import type { Currency, Language } from "../types/api";
+import i18n from "../i18n";
 
-const dateFormatter = new Intl.DateTimeFormat("en-US", {
-  dateStyle: "medium",
-  timeStyle: "short",
-});
+// Amounts and dates never change value across locales (display-only, no
+// conversion ever happens) -- only the Intl formatter used to render them
+// varies with the active UI language, so cache one formatter per
+// (locale, currency) pair and re-derive the locale from `i18n.language` on
+// every call rather than baking it in at module load.
+const LOCALE_MAP: Record<Language, string> = { en: "en-US", fr: "fr-FR", de: "de-DE" };
 
-const dateOnlyFormatter = new Intl.DateTimeFormat("en-US", { dateStyle: "medium" });
+function resolveLocale(): string {
+  return LOCALE_MAP[i18n.language as Language] ?? LOCALE_MAP.en;
+}
 
-export function formatCurrency(value: string | number): string {
+const currencyFormatters = new Map<string, Intl.NumberFormat>();
+
+function getCurrencyFormatter(currency: Currency): Intl.NumberFormat {
+  const locale = resolveLocale();
+  const key = `${locale}:${currency}`;
+  let formatter = currencyFormatters.get(key);
+  if (!formatter) {
+    formatter = new Intl.NumberFormat(locale, { style: "currency", currency });
+    currencyFormatters.set(key, formatter);
+  }
+  return formatter;
+}
+
+const dateTimeFormatters = new Map<string, Intl.DateTimeFormat>();
+const dateOnlyFormatters = new Map<string, Intl.DateTimeFormat>();
+
+function getDateTimeFormatter(): Intl.DateTimeFormat {
+  const locale = resolveLocale();
+  let formatter = dateTimeFormatters.get(locale);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" });
+    dateTimeFormatters.set(locale, formatter);
+  }
+  return formatter;
+}
+
+function getDateOnlyFormatter(): Intl.DateTimeFormat {
+  const locale = resolveLocale();
+  let formatter = dateOnlyFormatters.get(locale);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat(locale, { dateStyle: "medium" });
+    dateOnlyFormatters.set(locale, formatter);
+  }
+  return formatter;
+}
+
+export const CURRENCY_OPTIONS: Currency[] = ["USD", "EUR", "GBP", "CHF", "JPY", "CAD", "AUD"];
+
+export function formatCurrency(value: string | number, currency: Currency = "USD"): string {
   const amount = typeof value === "string" ? Number.parseFloat(value) : value;
-  return currencyFormatter.format(Number.isFinite(amount) ? amount : 0);
+  return getCurrencyFormatter(currency).format(Number.isFinite(amount) ? amount : 0);
 }
 
 export function formatDateTime(iso: string): string {
-  return dateFormatter.format(new Date(iso));
+  return getDateTimeFormatter().format(new Date(iso));
 }
 
 export function formatDate(iso: string): string {
-  return dateOnlyFormatter.format(new Date(iso));
+  return getDateOnlyFormatter().format(new Date(iso));
 }
 
-export const WEEKDAY_LABELS = [
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-  "Sunday",
+// Stable, locale-independent keys (also matches the translation namespace
+// `weekday.*`) paired with the backend's 0=Monday..6=Sunday convention.
+export const WEEKDAY_KEYS = [
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+  "sunday",
 ] as const;
 
-export function formatHour(hour: number): string {
-  const period = hour < 12 ? "AM" : "PM";
-  const displayHour = hour % 12 === 0 ? 12 : hour % 12;
-  return `${displayHour}:00 ${period}`;
-}
-
-/** Renders a duration between `now` and `target` as "3d 4h 12m" (or "due now"). */
-export function formatCountdown(target: Date, now: Date): string {
+/** Renders a duration between `now` and `target` as "3d 4h 12m" (or the
+ * localized "due now"). `t` is the `useTranslation()` translate function of
+ * the calling component. */
+export function formatCountdown(target: Date, now: Date, t: (key: string) => string): string {
   const totalMs = target.getTime() - now.getTime();
-  if (totalMs <= 0) return "due now";
+  if (totalMs <= 0) return t("countdown.dueNow");
 
   const totalMinutes = Math.floor(totalMs / 60_000);
   const days = Math.floor(totalMinutes / (24 * 60));
@@ -50,8 +88,8 @@ export function formatCountdown(target: Date, now: Date): string {
   const minutes = totalMinutes % 60;
 
   const parts: string[] = [];
-  if (days > 0) parts.push(`${days}d`);
-  if (days > 0 || hours > 0) parts.push(`${hours}h`);
-  parts.push(`${minutes}m`);
+  if (days > 0) parts.push(`${days}${t("countdown.day")}`);
+  if (days > 0 || hours > 0) parts.push(`${hours}${t("countdown.hour")}`);
+  parts.push(`${minutes}${t("countdown.minute")}`);
   return parts.join(" ");
 }

@@ -74,3 +74,39 @@ class AccountAPITests(APITestCase):
         self.assertEqual(Decimal(by_parent["dad"]["total_given"]), Decimal("5.00"))
         self.assertEqual(Decimal(by_parent["dad"]["total_taken"]), Decimal("2.00"))
         self.assertEqual(Decimal(by_parent["dad"]["net_contribution"]), Decimal("3.00"))
+
+    def test_currency_defaults_to_usd_and_is_exposed_on_account(self):
+        self.client.force_authenticate(user=self.child)
+        resp = self.client.get(reverse("accounts-detail", args=[self.child.account.id]))
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.data["currency"], "USD")
+
+    def test_child_can_change_own_account_currency(self):
+        self.client.force_authenticate(user=self.child)
+        resp = self.client.patch(reverse("accounts-currency", args=[self.child.account.id]), {"currency": "CHF"})
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.data["currency"], "CHF")
+        self.child.account.refresh_from_db()
+        self.assertEqual(self.child.account.currency, "CHF")
+
+    def test_guardian_parent_can_change_childs_account_currency(self):
+        self.client.force_authenticate(user=self.mom)
+        resp = self.client.patch(reverse("accounts-currency", args=[self.child.account.id]), {"currency": "JPY"})
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.child.account.refresh_from_db()
+        self.assertEqual(self.child.account.currency, "JPY")
+
+    def test_unrelated_parent_cannot_change_childs_account_currency(self):
+        stranger = User.objects.create_user(username="stranger2", password="pw12345678", role=User.PARENT)
+        self.client.force_authenticate(user=stranger)
+        resp = self.client.patch(reverse("accounts-currency", args=[self.child.account.id]), {"currency": "EUR"})
+        self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
+        self.child.account.refresh_from_db()
+        self.assertEqual(self.child.account.currency, "USD")
+
+    def test_invalid_currency_value_is_rejected(self):
+        self.client.force_authenticate(user=self.child)
+        resp = self.client.patch(reverse("accounts-currency", args=[self.child.account.id]), {"currency": "XXX"})
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        self.child.account.refresh_from_db()
+        self.assertEqual(self.child.account.currency, "USD")

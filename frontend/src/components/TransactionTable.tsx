@@ -1,4 +1,5 @@
-import type { Transaction } from "../types/api";
+import { useTranslation } from "react-i18next";
+import type { Currency, Transaction } from "../types/api";
 import { formatCurrency, formatDateTime } from "../lib/format";
 import { Card, CardHeader, EmptyState, TransactionTypeBadge } from "./ui";
 
@@ -10,28 +11,31 @@ const IS_CREDIT_TYPE: Record<string, boolean> = { allowance: true, interest: tru
 export function TransactionTable({
   transactions,
   perspectiveAccountId,
-  title = "Transaction history",
+  currency,
+  title,
   subtitle,
 }: {
   transactions: Transaction[];
   perspectiveAccountId: number;
+  currency: Currency;
   title?: string;
   subtitle?: string;
 }) {
+  const { t } = useTranslation();
   return (
     <Card>
-      <CardHeader title={title} subtitle={subtitle} />
+      <CardHeader title={title ?? t("transactions.defaultTitle")} subtitle={subtitle} />
       {transactions.length === 0 ? (
-        <EmptyState>No transactions yet.</EmptyState>
+        <EmptyState>{t("transactions.empty")}</EmptyState>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-ink-100 text-left text-xs uppercase tracking-wide text-ink-400">
-                <th className="px-5 py-2.5 font-medium">Date</th>
-                <th className="px-5 py-2.5 font-medium">Type</th>
-                <th className="px-5 py-2.5 font-medium">Description</th>
-                <th className="px-5 py-2.5 text-right font-medium">Amount</th>
+                <th className="px-5 py-2.5 font-medium">{t("transactions.dateCol")}</th>
+                <th className="px-5 py-2.5 font-medium">{t("transactions.typeCol")}</th>
+                <th className="px-5 py-2.5 font-medium">{t("transactions.descriptionCol")}</th>
+                <th className="px-5 py-2.5 text-right font-medium">{t("transactions.amountCol")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-ink-100">
@@ -50,7 +54,7 @@ export function TransactionTable({
                       }`}
                     >
                       {isCredit ? "+" : "\u2212"}
-                      {formatCurrency(txn.amount)}
+                      {formatCurrency(txn.amount, currency)}
                     </td>
                   </tr>
                 );

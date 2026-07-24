@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/useAuth";
 import {
   accountsApi,
@@ -9,7 +10,8 @@ import {
   usersApi,
 } from "../../api/endpoints";
 import { apiErrorMessage } from "../../api/client";
-import type { Account, AllowanceRule, Guardianship, InterestRule, ReconciliationRow, Transaction, User } from "../../types/api";
+import type { Account, AllowanceRule, Currency, Guardianship, InterestRule, ReconciliationRow, Transaction, User } from "../../types/api";
+import { CURRENCY_OPTIONS } from "../../lib/format";
 import { NavBar } from "../../components/NavBar";
 import { BalanceCard } from "../../components/BalanceCard";
 import { TransactionTable } from "../../components/TransactionTable";
@@ -31,6 +33,7 @@ interface ChildState {
 }
 
 export function ChildDetail() {
+  const { t } = useTranslation();
   const { childId: childIdParam } = useParams<{ childId: string }>();
   const childId = Number(childIdParam);
   const { user } = useAuth();
@@ -38,6 +41,7 @@ export function ChildDetail() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [showLinkGuardian, setShowLinkGuardian] = useState(false);
+  const [currencySaving, setCurrencySaving] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -50,7 +54,7 @@ export function ChildDetail() {
         interestRulesApi.list(),
       ]);
       const account = accounts.find((a) => a.owner === childId);
-      if (!account) throw new Error("No account found for this child.");
+      if (!account) throw new Error(t("childDetail.noAccount"));
 
       const [transactions, reconciliation, guardians] = await Promise.all([
         accountsApi.history(account.id),
@@ -68,11 +72,24 @@ export function ChildDetail() {
         interestRule: interestRules.find((r) => r.child === childId) ?? null,
       });
     } catch (err) {
-      setError(apiErrorMessage(err, "Could not load this child's account."));
+      setError(apiErrorMessage(err, t("childDetail.loadError")));
     } finally {
       setLoading(false);
     }
-  }, [childId]);
+  }, [childId, t]);
+
+  async function handleCurrencyChange(next: Currency) {
+    if (!state || next === state.account.currency) return;
+    setCurrencySaving(true);
+    try {
+      const updated = await accountsApi.updateCurrency(state.account.id, next);
+      setState((prev) => (prev ? { ...prev, account: updated } : prev));
+    } catch (err) {
+      setError(apiErrorMessage(err, t("childDetail.currencyUpdateError")));
+    } finally {
+      setCurrencySaving(false);
+    }
+  }
 
   useEffect(() => {
     load();
@@ -83,7 +100,7 @@ export function ChildDetail() {
       <NavBar />
       <main className="mx-auto max-w-6xl px-6 py-8">
         <Link to="/parent" className="mb-4 inline-block text-sm font-medium text-brand-600 hover:text-brand-700">
-          &larr; All children
+          {t("childDetail.backLink")}
         </Link>
 
         {error && (
@@ -93,7 +110,7 @@ export function ChildDetail() {
         )}
 
         {loading || !state ? (
-          <Spinner label="Loading account" />
+          <Spinner label={t("childDetail.loading")} />
         ) : (
           <>
             <div className="mb-6 flex items-center justify-between">
@@ -104,7 +121,7 @@ export function ChildDetail() {
                 <p className="text-sm text-ink-500">@{state.child.username}</p>
               </div>
               {!showLinkGuardian && (
-                <PrimaryButton onClick={() => setShowLinkGuardian(true)}>+ Link guardian</PrimaryButton>
+                <PrimaryButton onClick={() => setShowLinkGuardian(true)}>{t("childDetail.linkGuardianButton")}</PrimaryButton>
               )}
             </div>
 
@@ -121,19 +138,43 @@ export function ChildDetail() {
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
               <div className="space-y-6 lg:col-span-1">
-                <BalanceCard label="Current balance" balance={state.account.balance} />
+                <BalanceCard
+                  label={t("common.currentBalance")}
+                  balance={state.account.balance}
+                  currency={state.account.currency}
+                />
+                <div className="flex items-center gap-2 rounded-xl border border-ink-200 bg-white px-4 py-3">
+                  <label htmlFor="child-detail-currency" className="text-xs font-medium text-ink-500">
+                    {t("common.currency")}
+                  </label>
+                  <select
+                    id="child-detail-currency"
+                    value={state.account.currency}
+                    onChange={(e) => handleCurrencyChange(e.target.value as Currency)}
+                    disabled={currencySaving}
+                    className="ml-auto rounded-md border border-ink-200 bg-white px-2 py-1 text-xs font-medium text-ink-700 disabled:opacity-50"
+                  >
+                    {CURRENCY_OPTIONS.map((code) => (
+                      <option key={code} value={code}>
+                        {`${code} \u2014 ${t(`currencyName.${code}`)}`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <DepositWithdrawForm
                   accountId={state.account.id}
+                  currency={state.account.currency}
                   onPosted={() => load()}
                 />
               </div>
 
               <div className="space-y-6 lg:col-span-2">
-                <ReconciliationPanel rows={state.reconciliation} guardians={state.guardians} />
+                <ReconciliationPanel rows={state.reconciliation} guardians={state.guardians} currency={state.account.currency} />
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                   <AllowanceRuleEditor
                     childId={childId}
                     currentParentId={user!.id}
+                    currency={state.account.currency}
                     guardians={state.reconciliation}
                     rule={state.allowanceRule}
                     onSaved={(rule) => setState((prev) => (prev ? { ...prev, allowanceRule: rule } : prev))}
@@ -149,7 +190,7 @@ export function ChildDetail() {
               </div>
 
               <div className="lg:col-span-3">
-                <TransactionTable transactions={state.transactions} perspectiveAccountId={state.account.id} />
+                <TransactionTable transactions={state.transactions} perspectiveAccountId={state.account.id} currency={state.account.currency} />
               </div>
             </div>
           </>

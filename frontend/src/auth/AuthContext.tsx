@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { jwtDecode } from "jwt-decode";
+import { useTranslation } from "react-i18next";
 import { authApi, usersApi } from "../api/endpoints";
 import { apiErrorMessage, onSessionExpired, tokenStore } from "../api/client";
-import type { User } from "../types/api";
+import type { Language, User } from "../types/api";
+import i18n, { persistLanguage } from "../i18n";
 import { AuthContext, type AuthState } from "./auth-context";
 
 interface AccessTokenClaims {
@@ -14,7 +16,11 @@ async function loadUserFromToken(): Promise<User | null> {
   if (!access) return null;
   try {
     const { user_id } = jwtDecode<AccessTokenClaims>(access);
-    return await usersApi.me(Number(user_id));
+    const user = await usersApi.me(Number(user_id));
+    // Apply the account's saved UI language preference now that we know it.
+    i18n.changeLanguage(user.language);
+    persistLanguage(user.language);
+    return user;
   } catch {
     tokenStore.clear();
     return null;
@@ -22,6 +28,7 @@ async function loadUserFromToken(): Promise<User | null> {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const { t } = useTranslation();
   const [user, setUser] = useState<User | null>(null);
   const [status, setStatus] = useState<AuthState["status"]>("checking");
 
@@ -39,19 +46,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const login = useCallback(async (username: string, password: string) => {
-    let tokens;
-    try {
-      tokens = await authApi.login(username, password);
-    } catch (error) {
-      throw new Error(apiErrorMessage(error, "Invalid username or password."));
-    }
-    tokenStore.set(tokens);
-    const loaded = await loadUserFromToken();
-    if (!loaded) throw new Error("Signed in, but could not load your profile.");
-    setUser(loaded);
-    setStatus("authenticated");
-  }, []);
+  const login = useCallback(
+    async (username: string, password: string) => {
+      let tokens;
+      try {
+        tokens = await authApi.login(username, password);
+      } catch (error) {
+        throw new Error(apiErrorMessage(error, t("login.invalidCredentials")));
+      }
+      tokenStore.set(tokens);
+      const loaded = await loadUserFromToken();
+      if (!loaded) throw new Error(t("login.profileLoadFailed"));
+      setUser(loaded);
+      setStatus("authenticated");
+    },
+    [t],
+  );
 
   const logout = useCallback(() => {
     tokenStore.clear();
@@ -59,7 +69,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStatus("anonymous");
   }, []);
 
-  const value = useMemo(() => ({ user, status, login, logout }), [user, status, login, logout]);
+  const updateLanguage = useCallback(
+    async (language: Language) => {
+      i18n.changeLanguage(language);
+      persistLanguage(language);
+      if (!user) return;
+      const updated = await usersApi.update(user.id, { language });
+      setUser(updated);
+    },
+    [user],
+  );
+
+  const value = useMemo(
+    () => ({ user, status, login, logout, updateLanguage }),
+    [user, status, login, logout, updateLanguage],
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

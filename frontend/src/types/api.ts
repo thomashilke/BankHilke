@@ -4,6 +4,10 @@
 
 export type Role = "parent" | "child";
 
+export type Currency = "USD" | "EUR" | "GBP" | "CHF" | "JPY" | "CAD" | "AUD";
+
+export type Language = "en" | "fr" | "de";
+
 export interface User {
   id: number;
   username: string;
@@ -11,6 +15,8 @@ export interface User {
   first_name: string;
   last_name: string;
   role: Role;
+  is_staff: boolean;
+  language: Language;
 }
 
 export interface Guardianship {
@@ -29,6 +35,7 @@ export interface Account {
   owner: number;
   owner_username: string;
   role: Role;
+  currency: Currency;
   balance: string;
   created_at: string;
 }

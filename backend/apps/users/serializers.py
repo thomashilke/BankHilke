@@ -1,10 +1,18 @@
 from rest_framework import serializers
 
+from apps.accounts.models import Account
 from apps.users.models import Guardianship, User
 
 
 class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8)
+    currency = serializers.ChoiceField(
+        choices=Account.Currency.choices,
+        write_only=True,
+        required=False,
+        default=Account.Currency.USD,
+        help_text="Display currency for this user's account -- for presentation only, no conversion is ever performed.",
+    )
 
     class Meta:
         model = User
@@ -17,23 +25,33 @@ class UserSerializer(serializers.ModelSerializer):
             "last_name",
             "role",
             "password",
+            "currency",
+            "is_staff",
+            "language",
         ]
-        read_only_fields = ["id"]
+        read_only_fields = ["id", "is_staff"]
 
     def create(self, validated_data):
+        currency = validated_data.pop("currency", Account.Currency.USD)
         password = validated_data.pop("password")
         user = User(**validated_data)
         user.set_password(password)
         user.save()
+        user.account.currency = currency
+        user.account.save(update_fields=["currency"])
         return user
 
     def update(self, instance, validated_data):
+        currency = validated_data.pop("currency", None)
         password = validated_data.pop("password", None)
         for field, value in validated_data.items():
             setattr(instance, field, value)
         if password:
             instance.set_password(password)
         instance.save()
+        if currency:
+            instance.account.currency = currency
+            instance.account.save(update_fields=["currency"])
         return instance
 
 

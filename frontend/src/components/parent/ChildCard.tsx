@@ -1,9 +1,11 @@
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import type { Account, User } from "../../types/api";
 import { formatCurrency } from "../../lib/format";
 import { Card } from "../ui";
 
 export function ChildCard({ child, account }: { child: User; account: Account | null }) {
+  const { t } = useTranslation();
   const displayName = child.first_name ? `${child.first_name} ${child.last_name}`.trim() : child.username;
 
   return (
@@ -21,12 +23,12 @@ export function ChildCard({ child, account }: { child: User; account: Account | 
           </div>
         </div>
         <div className="mt-4 flex items-baseline justify-between">
-          <span className="text-xs uppercase tracking-wide text-ink-400">Balance</span>
+          <span className="text-xs uppercase tracking-wide text-ink-400">{t("childCard.balanceLabel")}</span>
           <span className="font-mono text-lg font-semibold tabular text-ink-900">
-            {account ? formatCurrency(account.balance) : "\u2014"}
+            {account ? formatCurrency(account.balance, account.currency) : "\u2014"}
           </span>
         </div>
-        <div className="mt-4 text-right text-xs font-medium text-brand-600">Manage account &rarr;</div>
+        <div className="mt-4 text-right text-xs font-medium text-brand-600">{t("childCard.manageLink")}</div>
       </Card>
     </Link>
   );

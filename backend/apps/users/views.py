@@ -50,8 +50,16 @@ class UserViewSet(ModelViewSet):
                 raise PermissionDenied("only an authenticated parent can create a child account")
             child = serializer.save()
             Guardianship.objects.create(parent=requester, child=child)
-        else:
-            serializer.save()
+            return
+        if requester.is_authenticated:
+            # Anonymous requests fall straight through to open self-registration
+            # (see get_permissions); an already-authenticated session minting
+            # *another* parent account is only allowed for administrators.
+            if not (requester.role == User.PARENT and requester.is_staff):
+                raise PermissionDenied(
+                    "only a parent with administrative rights can create another parent account"
+                )
+        serializer.save()
 
 
 class GuardianshipViewSet(ModelViewSet):

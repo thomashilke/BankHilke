@@ -10,9 +10,21 @@ class User(AbstractUser):
         (CHILD, "Child"),
     ]
 
+    class Language(models.TextChoices):
+        EN = "en", "English"
+        FR = "fr", "Français"
+        DE = "de", "Deutsch"
+
     role = models.CharField(
         max_length=20,
         choices=ROLE_CHOICES
+    )
+
+    language = models.CharField(
+        max_length=2,
+        choices=Language.choices,
+        default=Language.EN,
+        help_text="Preferred UI language -- purely a display preference for the frontend.",
     )
 
     pin = models.CharField(

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
-import type { AllowanceRule, InterestRule } from "../types/api";
-import { formatCurrency, formatCountdown } from "../lib/format";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
+import type { AllowanceRule, Currency, InterestRule } from "../types/api";
+import { formatCurrency, formatCountdown, formatDateTime } from "../lib/format";
 import { nextMonthlyOccurrence, nextWeeklyOccurrence, projectOccurrences } from "../lib/schedule";
 import { Card, CardHeader, EmptyState } from "./ui";
 
@@ -14,7 +16,7 @@ interface UpcomingEvent {
 
 const EVENTS_PER_RULE = 3;
 
-function projectAllowanceEvents(rule: AllowanceRule): UpcomingEvent[] {
+function projectAllowanceEvents(rule: AllowanceRule, currency: Currency, t: TFunction): UpcomingEvent[] {
   if (!rule.enabled) return [];
   const occurrences = projectOccurrences(new Date(rule.next_run_at), EVENTS_PER_RULE, (after) =>
     nextWeeklyOccurrence(after, rule.weekday, rule.hour),
@@ -22,13 +24,13 @@ function projectAllowanceEvents(rule: AllowanceRule): UpcomingEvent[] {
   return occurrences.map((at, index) => ({
     key: `allowance-${rule.id}-${index}`,
     type: "allowance",
-    label: "Weekly allowance",
-    amountLabel: `+${formatCurrency(rule.amount)}`,
+    label: t("allowance.title"),
+    amountLabel: t("upcoming.creditedAmount", { amount: formatCurrency(rule.amount, currency) }),
     at,
   }));
 }
 
-function projectInterestEvents(rule: InterestRule, currentBalance: number): UpcomingEvent[] {
+function projectInterestEvents(rule: InterestRule, currentBalance: number, currency: Currency, t: TFunction): UpcomingEvent[] {
   if (!rule.enabled) return [];
   const step = rule.schedule === "weekly"
     ? (after: Date) => nextWeeklyOccurrence(after, rule.weekday, rule.hour)
@@ -40,8 +42,11 @@ function projectInterestEvents(rule: InterestRule, currentBalance: number): Upco
   return occurrences.map((at, index) => ({
     key: `interest-${rule.id}-${index}`,
     type: "interest",
-    label: `Interest (${rule.schedule}, ${(Number.parseFloat(rule.annual_rate) * 100).toFixed(2)}%/yr)`,
-    amountLabel: `\u2248 ${formatCurrency(estimatedAmount)}`,
+    label: t("upcoming.interestLabel", {
+      schedule: t(`common.${rule.schedule}`),
+      rate: (Number.parseFloat(rule.annual_rate) * 100).toFixed(2),
+    }),
+    amountLabel: t("upcoming.estimatedAmount", { amount: formatCurrency(estimatedAmount, currency) }),
     at,
   }));
 }
@@ -50,11 +55,14 @@ export function UpcomingEvents({
   allowanceRule,
   interestRule,
   currentBalance,
+  currency,
 }: {
   allowanceRule: AllowanceRule | null;
   interestRule: InterestRule | null;
   currentBalance: number;
+  currency: Currency;
 }) {
+  const { t } = useTranslation();
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -63,15 +71,15 @@ export function UpcomingEvents({
   }, []);
 
   const events = [
-    ...(allowanceRule ? projectAllowanceEvents(allowanceRule) : []),
-    ...(interestRule ? projectInterestEvents(interestRule, currentBalance) : []),
+    ...(allowanceRule ? projectAllowanceEvents(allowanceRule, currency, t) : []),
+    ...(interestRule ? projectInterestEvents(interestRule, currentBalance, currency, t) : []),
   ].sort((a, b) => a.at.getTime() - b.at.getTime());
 
   return (
     <Card>
-      <CardHeader title="Upcoming events" subtitle="Scheduled allowance and interest postings" />
+      <CardHeader title={t("upcoming.title")} subtitle={t("upcoming.subtitle")} />
       {events.length === 0 ? (
-        <EmptyState>No upcoming events configured yet.</EmptyState>
+        <EmptyState>{t("upcoming.empty")}</EmptyState>
       ) : (
         <ul className="divide-y divide-ink-100">
           {events.map((event) => (
@@ -84,12 +92,12 @@ export function UpcomingEvents({
                 />
                 <div>
                   <p className="text-sm font-medium text-ink-800">{event.label}</p>
-                  <p className="text-xs text-ink-400">{event.at.toLocaleString()}</p>
+                  <p className="text-xs text-ink-400">{formatDateTime(event.at.toISOString())}</p>
                 </div>
               </div>
               <div className="text-right">
                 <p className="font-mono text-sm font-semibold tabular text-ink-900">{event.amountLabel}</p>
-                <p className="text-xs font-medium text-brand-600">{formatCountdown(event.at, now)}</p>
+                <p className="text-xs font-medium text-brand-600">{formatCountdown(event.at, now, t)}</p>
               </div>
             </li>
           ))}

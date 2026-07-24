@@ -16,6 +16,7 @@ class AccountSerializer(serializers.ModelSerializer):
             "owner",
             "owner_username",
             "role",
+            "currency",
             "balance",
             "created_at",
         ]

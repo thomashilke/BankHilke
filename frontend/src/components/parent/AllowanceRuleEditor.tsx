@@ -1,8 +1,9 @@
 import { useState, type FormEvent } from "react";
+import { useTranslation } from "react-i18next";
 import { allowanceRulesApi } from "../../api/endpoints";
 import { apiErrorMessage } from "../../api/client";
-import type { AllowanceRule, ReconciliationRow } from "../../types/api";
-import { WEEKDAY_LABELS, formatDateTime } from "../../lib/format";
+import type { AllowanceRule, Currency, ReconciliationRow } from "../../types/api";
+import { WEEKDAY_KEYS, formatDateTime } from "../../lib/format";
 import { Card, CardHeader, ErrorAlert, Label, PrimaryButton, inputClass } from "../ui";
 
 // `guardians` is derived from the reconciliation endpoint (the only source
@@ -11,16 +12,19 @@ import { Card, CardHeader, ErrorAlert, Label, PrimaryButton, inputClass } from "
 export function AllowanceRuleEditor({
   childId,
   currentParentId,
+  currency,
   guardians,
   rule,
   onSaved,
 }: {
   childId: number;
   currentParentId: number;
+  currency: Currency;
   guardians: ReconciliationRow[];
   rule: AllowanceRule | null;
   onSaved: (rule: AllowanceRule) => void;
 }) {
+  const { t } = useTranslation();
   const [amount, setAmount] = useState(rule?.amount ?? "");
   const [weekday, setWeekday] = useState(rule?.weekday ?? 6);
   const [hour, setHour] = useState(rule?.hour ?? 9);
@@ -45,7 +49,7 @@ export function AllowanceRuleEditor({
       const saved = rule ? await allowanceRulesApi.update(rule.id, payload) : await allowanceRulesApi.create(payload);
       onSaved(saved);
     } catch (err) {
-      setError(apiErrorMessage(err, "Could not save the allowance rule."));
+      setError(apiErrorMessage(err, t("allowance.error")));
     } finally {
       setSaving(false);
     }
@@ -54,15 +58,15 @@ export function AllowanceRuleEditor({
   return (
     <Card>
       <CardHeader
-        title="Weekly allowance"
-        subtitle={rule ? `Next posting: ${formatDateTime(rule.next_run_at)}` : "No allowance configured yet"}
+        title={t("allowance.title")}
+        subtitle={rule ? t("allowance.nextPosting", { date: formatDateTime(rule.next_run_at) }) : t("allowance.notConfigured")}
       />
       <form onSubmit={handleSubmit} className="space-y-4 px-5 py-4">
         {error && <ErrorAlert message={error} />}
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label>Amount (USD / week)</Label>
+            <Label>{t("allowance.amountLabel", { currency })}</Label>
             <input
               type="number"
               min="0.01"
@@ -74,7 +78,7 @@ export function AllowanceRuleEditor({
             />
           </div>
           <div>
-            <Label>Posting hour</Label>
+            <Label>{t("common.postingHour")}</Label>
             <select value={hour} onChange={(e) => setHour(Number(e.target.value))} className={inputClass}>
               {Array.from({ length: 24 }, (_, h) => (
                 <option key={h} value={h}>
@@ -86,11 +90,11 @@ export function AllowanceRuleEditor({
         </div>
 
         <div>
-          <Label>Day of week</Label>
+          <Label>{t("common.dayOfWeek")}</Label>
           <select value={weekday} onChange={(e) => setWeekday(Number(e.target.value))} className={inputClass}>
-            {WEEKDAY_LABELS.map((label, index) => (
-              <option key={label} value={index}>
-                {label}
+            {WEEKDAY_KEYS.map((key, index) => (
+              <option key={key} value={index}>
+                {t(`weekday.${key}`)}
               </option>
             ))}
           </select>
@@ -98,7 +102,7 @@ export function AllowanceRuleEditor({
 
         {guardians.length > 1 && (
           <div>
-            <Label>Funded by</Label>
+            <Label>{t("common.fundedBy")}</Label>
             <select
               value={fundingParent}
               onChange={(e) => setFundingParent(Number(e.target.value))}
@@ -120,11 +124,11 @@ export function AllowanceRuleEditor({
             onChange={(e) => setEnabled(e.target.checked)}
             className="h-4 w-4 rounded border-ink-300 text-brand-600 focus:ring-brand-200"
           />
-          Rule enabled
+          {t("common.ruleEnabled")}
         </label>
 
         <PrimaryButton type="submit" disabled={saving} className="w-full">
-          {saving ? "Saving\u2026" : rule ? "Save changes" : "Create allowance rule"}
+          {saving ? t("common.saving") : rule ? t("common.saveChanges") : t("allowance.create")}
         </PrimaryButton>
       </form>
     </Card>

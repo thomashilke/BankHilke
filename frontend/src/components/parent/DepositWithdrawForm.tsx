@@ -1,18 +1,22 @@
 import { useState, type FormEvent } from "react";
+import { useTranslation } from "react-i18next";
 import { transactionsApi } from "../../api/endpoints";
 import { apiErrorMessage } from "../../api/client";
-import type { Transaction } from "../../types/api";
+import type { Currency, Transaction } from "../../types/api";
 import { Card, CardHeader, ErrorAlert, Label, PrimaryButton, SecondaryButton, inputClass } from "../ui";
 
 type Action = "deposit" | "withdraw";
 
 export function DepositWithdrawForm({
   accountId,
+  currency,
   onPosted,
 }: {
   accountId: number;
+  currency: Currency;
   onPosted: (transaction: Transaction) => void;
 }) {
+  const { t } = useTranslation();
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [pending, setPending] = useState<Action | null>(null);
@@ -29,7 +33,7 @@ export function DepositWithdrawForm({
       setAmount("");
       setDescription("");
     } catch (err) {
-      setError(apiErrorMessage(err, `Could not post ${action}.`));
+      setError(apiErrorMessage(err, t(action === "deposit" ? "deposit.depositError" : "deposit.withdrawError")));
     } finally {
       setPending(null);
     }
@@ -39,12 +43,12 @@ export function DepositWithdrawForm({
 
   return (
     <Card>
-      <CardHeader title="Move money" subtitle="Deposit into or withdraw from this account" />
+      <CardHeader title={t("deposit.title")} subtitle={t("deposit.subtitle")} />
       <form className="space-y-4 px-5 py-4">
         {error && <ErrorAlert message={error} />}
 
         <div>
-          <Label>Amount (USD)</Label>
+          <Label>{t("deposit.amountLabel", { currency })}</Label>
           <input
             type="number"
             min="0.01"
@@ -59,14 +63,14 @@ export function DepositWithdrawForm({
         </div>
 
         <div>
-          <Label>Description (optional)</Label>
+          <Label>{t("common.descriptionOptional")}</Label>
           <input
             type="text"
             maxLength={200}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             className={inputClass}
-            placeholder="e.g. Birthday gift"
+            placeholder={t("deposit.descriptionPlaceholder")}
             disabled={busy}
           />
         </div>
@@ -78,7 +82,7 @@ export function DepositWithdrawForm({
             disabled={busy || !amount}
             onClick={(e) => submit(e, "deposit")}
           >
-            {pending === "deposit" ? "Depositing\u2026" : "Deposit"}
+            {pending === "deposit" ? t("deposit.depositing") : t("deposit.depositAction")}
           </PrimaryButton>
           <SecondaryButton
             type="submit"
@@ -86,7 +90,7 @@ export function DepositWithdrawForm({
             disabled={busy || !amount}
             onClick={(e) => submit(e, "withdraw")}
           >
-            {pending === "withdraw" ? "Withdrawing\u2026" : "Withdraw"}
+            {pending === "withdraw" ? t("deposit.withdrawing") : t("deposit.withdrawAction")}
           </SecondaryButton>
         </div>
       </form>
