@@ -183,6 +183,8 @@ export function ChildDetail() {
                     childId={childId}
                     currentParentId={user!.id}
                     guardians={state.reconciliation}
+                    currency={state.account.currency}
+                    currentBalance={Number.parseFloat(state.account.balance)}
                     rule={state.interestRule}
                     onSaved={(rule) => setState((prev) => (prev ? { ...prev, interestRule: rule } : prev))}
                   />

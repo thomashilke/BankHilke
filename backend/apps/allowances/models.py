@@ -64,8 +64,12 @@ class AllowanceRule(models.Model):
 class InterestRule(models.Model):
     """Configures a child's recurring interest accrual.
 
-    Rate and calculation schedule (weekly or monthly) are independent of the
-    allowance schedule and of each other.
+    `rate` is applied directly at each accrual -- it is the rate for one
+    occurrence of `schedule` (one week or one month), not an annualized
+    figure divided down. This keeps the amount a parent configures directly
+    tied to the amount actually transferred each period, so it's easy to
+    reason about (and large enough to be meaningful to a child) instead of
+    an annual rate diluted to a barely-visible weekly/monthly fraction.
     """
 
     WEEKLY = "weekly"
@@ -74,7 +78,6 @@ class InterestRule(models.Model):
         (WEEKLY, "Weekly"),
         (MONTHLY, "Monthly"),
     ]
-    PERIODS_PER_YEAR = {WEEKLY: 52, MONTHLY: 12}
 
     child = models.OneToOneField(
         User,
@@ -91,10 +94,10 @@ class InterestRule(models.Model):
         help_text="Parent whose account is debited each time interest is paid.",
     )
 
-    annual_rate = models.DecimalField(
+    rate = models.DecimalField(
         max_digits=6,
         decimal_places=4,
-        help_text="Nominal annual rate, e.g. 0.0500 = 5%/year.",
+        help_text="Rate applied at each accrual (relative to `schedule`, not annualized), e.g. 0.0200 = 2% of the balance every period.",
     )
 
     schedule = models.CharField(max_length=10, choices=SCHEDULE_CHOICES, default=WEEKLY)
@@ -125,10 +128,6 @@ class InterestRule(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    @property
-    def period_rate(self):
-        return self.annual_rate / self.PERIODS_PER_YEAR[self.schedule]
-
     def save(self, *args, **kwargs):
         if self._state.adding and not self.next_run_at:
             if self.schedule == self.MONTHLY:
@@ -138,4 +137,4 @@ class InterestRule(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"Interest for {self.child} ({self.annual_rate}/yr, {self.schedule})"
+        return f"Interest for {self.child} ({self.rate}/{self.schedule})"

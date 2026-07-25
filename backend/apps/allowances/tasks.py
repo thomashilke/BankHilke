@@ -70,7 +70,7 @@ def _process_interest(now):
             due_at = rule.next_run_at
             with db_transaction.atomic():
                 principal = rule.child.account.balance
-                amount = (principal * rule.period_rate).quantize(Decimal("0.01"))
+                amount = (principal * rule.rate).quantize(Decimal("0.01"))
                 if amount > 0:
                     LedgerService.interest(
                         child_account=rule.child.account,

@@ -1,5 +1,5 @@
 // Mirrors the DRF serializers in backend/apps/*/serializers.py exactly.
-// Decimal-valued fields (amount, balance, annual_rate, ...) come over the
+// Decimal-valued fields (amount, balance, rate, ...) come over the
 // wire as strings, matching DRF's DecimalField JSON rendering.
 
 export type Role = "parent" | "child";
@@ -94,7 +94,7 @@ export interface InterestRule {
   id: number;
   child: number;
   funding_parent: number;
-  annual_rate: string;
+  rate: string;
   schedule: InterestSchedule;
   weekday: number;
   day_of_month: number;
@@ -107,7 +107,7 @@ export interface InterestRule {
 
 export type InterestRuleInput = Pick<
   InterestRule,
-  "child" | "funding_parent" | "annual_rate" | "schedule" | "weekday" | "day_of_month" | "hour" | "enabled"
+  "child" | "funding_parent" | "rate" | "schedule" | "weekday" | "day_of_month" | "hour" | "enabled"
 >;
 
 export interface ReconciliationRow {

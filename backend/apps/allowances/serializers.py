@@ -31,7 +31,7 @@ class InterestRuleSerializer(GuardianFundedRuleSerializer):
     class Meta:
         model = InterestRule
         fields = [
-            "id", "child", "funding_parent", "annual_rate", "schedule",
+            "id", "child", "funding_parent", "rate", "schedule",
             "weekday", "day_of_month", "hour", "enabled", "next_run_at",
             "created_at", "updated_at",
         ]

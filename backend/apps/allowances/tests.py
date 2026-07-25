@@ -99,13 +99,13 @@ class ProcessDueAccrualsTests(TestCase):
             amount=Decimal("100.00"), description="seed", initiated_by=self.parent,
         )
         InterestRule.objects.create(
-            child=self.child, funding_parent=self.parent, annual_rate=Decimal("0.0520"),
+            child=self.child, funding_parent=self.parent, rate=Decimal("0.0010"),
             schedule=InterestRule.WEEKLY, weekday=timezone.now().weekday(), hour=0,
             next_run_at=past_due,
         )
         process_due_accruals()
         self.child.account.refresh_from_db()
-        # 100 * (0.052 / 52) = 0.10
+        # 100 * 0.0010 = 0.10 (rate is applied directly for the weekly period)
         self.assertEqual(
             Transaction.objects.filter(transaction_type=Transaction.INTEREST).count(), 1
         )
@@ -171,6 +171,6 @@ class RuleConfigAPITests(APITestCase):
         self.client.force_authenticate(user=self.parent)
         resp = self.client.post(reverse("interest-rules-list"), {
             "child": self.child.id, "funding_parent": non_guardian.id,
-            "annual_rate": "0.05", "schedule": InterestRule.MONTHLY, "day_of_month": 1, "hour": 9,
+            "rate": "0.05", "schedule": InterestRule.MONTHLY, "day_of_month": 1, "hour": 9,
         })
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)

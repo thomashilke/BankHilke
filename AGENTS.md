@@ -50,8 +50,11 @@ role-gated parent/child dashboards consuming this API; see
       the DB unique constraint + catching `IntegrityError`).
   - **`allowances`** — per-child schedule configuration and the scheduler:
     - `AllowanceRule` (weekly: `weekday`/`hour`, `amount`, `funding_parent`)
-      and `InterestRule` (`annual_rate`, `schedule` = weekly or monthly,
-      independently configurable) each carry a `next_run_at` cursor.
+      and `InterestRule` (`rate`, `schedule` = weekly or monthly,
+      independently configurable) each carry a `next_run_at` cursor. `rate`
+      is applied directly at each accrual -- the rate for one occurrence of
+      `schedule`, not an annualized figure divided down -- so the amount a
+      parent configures is the amount actually transferred each period.
     - `scheduling.py` — pure datetime helpers (`next_weekly_occurrence`,
       `next_monthly_occurrence`) shared by the model defaults and the task.
     - `tasks.process_due_accruals` — the Celery task (see beat schedule

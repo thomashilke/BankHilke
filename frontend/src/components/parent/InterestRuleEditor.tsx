@@ -2,8 +2,8 @@ import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { interestRulesApi } from "../../api/endpoints";
 import { apiErrorMessage } from "../../api/client";
-import type { InterestRule, InterestSchedule, ReconciliationRow } from "../../types/api";
-import { WEEKDAY_KEYS, formatDateTime } from "../../lib/format";
+import type { Currency, InterestRule, InterestSchedule, ReconciliationRow } from "../../types/api";
+import { WEEKDAY_KEYS, formatCurrency, formatDateTime } from "../../lib/format";
 import { Card, CardHeader, ErrorAlert, Label, PrimaryButton, inputClass } from "../ui";
 
 // See AllowanceRuleEditor for why `guardians` only lists parents with a
@@ -14,18 +14,20 @@ export function InterestRuleEditor({
   currentParentId,
   guardians,
   rule,
+  currency,
+  currentBalance,
   onSaved,
 }: {
   childId: number;
   currentParentId: number;
   guardians: ReconciliationRow[];
   rule: InterestRule | null;
+  currency: Currency;
+  currentBalance: number;
   onSaved: (rule: InterestRule) => void;
 }) {
   const { t } = useTranslation();
-  const [annualRatePct, setAnnualRatePct] = useState(
-    rule ? (Number.parseFloat(rule.annual_rate) * 100).toString() : "",
-  );
+  const [ratePct, setRatePct] = useState(rule ? (Number.parseFloat(rule.rate) * 100).toString() : "");
   const [schedule, setSchedule] = useState<InterestSchedule>(rule?.schedule ?? "monthly");
   const [weekday, setWeekday] = useState(rule?.weekday ?? 6);
   const [dayOfMonth, setDayOfMonth] = useState(rule?.day_of_month ?? 1);
@@ -43,7 +45,7 @@ export function InterestRuleEditor({
       const payload = {
         child: childId,
         funding_parent: fundingParent,
-        annual_rate: (Number.parseFloat(annualRatePct) / 100).toFixed(4),
+        rate: (Number.parseFloat(ratePct) / 100).toFixed(4),
         schedule,
         weekday,
         day_of_month: dayOfMonth,
@@ -59,6 +61,8 @@ export function InterestRuleEditor({
     }
   }
 
+  const rateValue = Number.parseFloat(ratePct);
+  const estimatedAmount = Number.isFinite(rateValue) && currentBalance > 0 ? currentBalance * (rateValue / 100) : null;
   return (
     <Card>
       <CardHeader
@@ -70,17 +74,25 @@ export function InterestRuleEditor({
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label>{t("interest.annualRateLabel")}</Label>
+            <Label>{t(schedule === "weekly" ? "interest.rateLabelWeekly" : "interest.rateLabelMonthly")}</Label>
             <input
               type="number"
               min="0"
               step="0.01"
               required
-              value={annualRatePct}
-              onChange={(e) => setAnnualRatePct(e.target.value)}
+              value={ratePct}
+              onChange={(e) => setRatePct(e.target.value)}
               className={inputClass}
-              placeholder={t("interest.annualRatePlaceholder")}
+              placeholder={t("interest.ratePlaceholder")}
             />
+            {estimatedAmount !== null && (
+              <p className="mt-1 text-xs text-ink-400">
+                {t("interest.ratePreview", {
+                  amount: formatCurrency(estimatedAmount, currency),
+                  period: t(`common.${schedule === "weekly" ? "week" : "month"}`),
+                })}
+              </p>
+            )}
           </div>
           <div>
             <Label>{t("interest.scheduleLabel")}</Label>

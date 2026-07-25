@@ -36,15 +36,13 @@ function projectInterestEvents(rule: InterestRule, currentBalance: number, curre
     ? (after: Date) => nextWeeklyOccurrence(after, rule.weekday, rule.hour)
     : (after: Date) => nextMonthlyOccurrence(after, rule.day_of_month, rule.hour);
   const occurrences = projectOccurrences(new Date(rule.next_run_at), EVENTS_PER_RULE, step);
-  const periodsPerYear = rule.schedule === "weekly" ? 52 : 12;
-  const periodRate = Number.parseFloat(rule.annual_rate) / periodsPerYear;
-  const estimatedAmount = currentBalance * periodRate;
+  const estimatedAmount = currentBalance * Number.parseFloat(rule.rate);
   return occurrences.map((at, index) => ({
     key: `interest-${rule.id}-${index}`,
     type: "interest",
     label: t("upcoming.interestLabel", {
       schedule: t(`common.${rule.schedule}`),
-      rate: (Number.parseFloat(rule.annual_rate) * 100).toFixed(2),
+      rate: (Number.parseFloat(rule.rate) * 100).toFixed(2),
     }),
     amountLabel: t("upcoming.estimatedAmount", { amount: formatCurrency(estimatedAmount, currency) }),
     at,
