@@ -61,6 +61,7 @@ const de: Translation = {
   nav: {
     signOut: "Abmelden",
     language: "Sprache",
+    changePassword: "Passwort \u00e4ndern",
   },
   login: {
     heading: "Bei Ihrem Konto anmelden",
@@ -194,6 +195,28 @@ const de: Translation = {
     interestLabel: "Zinsen ({{schedule}}, {{rate}}\u00a0%/Jahr)",
     creditedAmount: "+{{amount}}",
     estimatedAmount: "\u2248 {{amount}}",
+  },
+  changePassword: {
+    title: "Passwort \u00e4ndern",
+    subtitle: "Aktualisieren Sie das Passwort f\u00fcr die Anmeldung an diesem Konto",
+    currentPassword: "Aktuelles Passwort",
+    newPassword: "Neues Passwort",
+    success: "Passwort aktualisiert.",
+    error: "Ihr Passwort konnte nicht aktualisiert werden.",
+  },
+  adminUsers: {
+    title: "Alle Benutzer",
+    subtitle: "Alle Konten der Plattform -- sichtbar f\u00fcr Eltern mit Administratorrechten",
+    viewButton: "Alle Benutzer anzeigen",
+    hideButton: "Ausblenden",
+    usernameCol: "Benutzername",
+    nameCol: "Name",
+    roleCol: "Rolle",
+    emailCol: "E-Mail",
+    adminCol: "Admin",
+    yes: "Ja",
+    no: "Nein",
+    empty: "Keine Benutzer gefunden.",
   },
 };
 

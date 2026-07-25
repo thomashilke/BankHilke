@@ -1,11 +1,13 @@
 from django.db.models import Q
 from rest_framework import permissions
+from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
 from api.permissions import IsParent
 from apps.users.models import Guardianship, User
-from apps.users.serializers import GuardianshipSerializer, UserSerializer
+from apps.users.serializers import ChangePasswordSerializer, GuardianshipSerializer, UserSerializer
 
 
 class IsSelfOrGuardianParent(permissions.BasePermission):
@@ -37,10 +39,24 @@ class UserViewSet(ModelViewSet):
         user = self.request.user
         if not user.is_authenticated:
             return User.objects.none()
+        if self.action == "list" and user.role == User.PARENT and user.is_staff:
+            # Administrative parents can see every account on the ledger,
+            # not just themselves + their own guarded children.
+            return User.objects.all()
         if user.role == User.PARENT:
             child_ids = Guardianship.objects.filter(parent=user).values_list("child_id", flat=True)
             return User.objects.filter(Q(id=user.id) | Q(id__in=child_ids))
         return User.objects.filter(id=user.id)
+
+    @action(detail=False, methods=["post"], url_path="change-password")
+    def change_password(self, request):
+        """Self-service password change for any authenticated user (parent
+        or child) -- always acts on the caller, never a target id, so this
+        can't be used to reset someone else's password."""
+        serializer = ChangePasswordSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({"detail": "password updated"})
 
     def perform_create(self, serializer):
         role = serializer.validated_data.get("role")

@@ -263,6 +263,110 @@ class AdminParentCreationTests(APITestCase):
         self.assertFalse(User.objects.get(username="newparent").is_staff)
 
 
+class ChangePasswordTests(APITestCase):
+    """Self-service password change: both a parent and a child can change
+    their own password given their current one; nobody can change another
+    user's password through this endpoint."""
+
+    def test_child_can_change_their_own_password(self):
+        child = User.objects.create_user(username="kid", password="pw12345678", role=User.CHILD)
+        self.client.force_authenticate(user=child)
+        resp = self.client.post(reverse("users-change-password"), {
+            "current_password": "pw12345678", "new_password": "new-password-2",
+        })
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.data)
+        child.refresh_from_db()
+        self.assertTrue(child.check_password("new-password-2"))
+
+    def test_parent_can_change_their_own_password(self):
+        parent = User.objects.create_user(username="parent", password="pw12345678", role=User.PARENT)
+        self.client.force_authenticate(user=parent)
+        resp = self.client.post(reverse("users-change-password"), {
+            "current_password": "pw12345678", "new_password": "new-password-2",
+        })
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.data)
+        parent.refresh_from_db()
+        self.assertTrue(parent.check_password("new-password-2"))
+
+    def test_wrong_current_password_is_rejected(self):
+        parent = User.objects.create_user(username="parent", password="pw12345678", role=User.PARENT)
+        self.client.force_authenticate(user=parent)
+        resp = self.client.post(reverse("users-change-password"), {
+            "current_password": "wrong-password", "new_password": "new-password-2",
+        })
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        parent.refresh_from_db()
+        self.assertTrue(parent.check_password("pw12345678"))
+
+    def test_new_password_too_short_is_rejected(self):
+        parent = User.objects.create_user(username="parent", password="pw12345678", role=User.PARENT)
+        self.client.force_authenticate(user=parent)
+        resp = self.client.post(reverse("users-change-password"), {
+            "current_password": "pw12345678", "new_password": "short",
+        })
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        parent.refresh_from_db()
+        self.assertTrue(parent.check_password("pw12345678"))
+
+    def test_anonymous_cannot_change_a_password(self):
+        User.objects.create_user(username="parent", password="pw12345678", role=User.PARENT)
+        resp = self.client.post(reverse("users-change-password"), {
+            "current_password": "pw12345678", "new_password": "new-password-2",
+        })
+        self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_changed_password_can_be_used_to_log_in(self):
+        User.objects.create_user(username="parent", password="pw12345678", role=User.PARENT)
+        parent = User.objects.get(username="parent")
+        self.client.force_authenticate(user=parent)
+        self.client.post(reverse("users-change-password"), {
+            "current_password": "pw12345678", "new_password": "new-password-2",
+        })
+        self.client.force_authenticate(user=None)
+        resp = self.client.post(reverse("token_obtain_pair"), {
+            "username": "parent", "password": "new-password-2",
+        })
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.data)
+
+
+class AdminUserListTests(APITestCase):
+    """A parent with administrative rights (is_staff) can see every user on
+    the platform; everyone else's list stays scoped to self (+ guarded
+    children for a regular parent)."""
+
+    def test_staff_parent_sees_every_user(self):
+        admin = User.objects.create_user(
+            username="admin", password="pw12345678", role=User.PARENT, is_staff=True,
+        )
+        other_parent = User.objects.create_user(username="parent2", password="pw12345678", role=User.PARENT)
+        unrelated_child = User.objects.create_user(username="kid", password="pw12345678", role=User.CHILD)
+        self.client.force_authenticate(user=admin)
+        resp = self.client.get(reverse("users-list"))
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        usernames = {row["username"] for row in resp.data}
+        self.assertEqual(usernames, {"admin", "parent2", "kid"})
+        self.assertIn(other_parent.username, usernames)
+        self.assertIn(unrelated_child.username, usernames)
+
+    def test_non_staff_parent_only_sees_self_and_guarded_children(self):
+        parent = User.objects.create_user(username="parent", password="pw12345678", role=User.PARENT)
+        User.objects.create_user(username="other_parent", password="pw12345678", role=User.PARENT)
+        child = User.objects.create_user(username="kid", password="pw12345678", role=User.CHILD)
+        Guardianship.objects.create(parent=parent, child=child)
+        self.client.force_authenticate(user=parent)
+        resp = self.client.get(reverse("users-list"))
+        usernames = {row["username"] for row in resp.data}
+        self.assertEqual(usernames, {"parent", "kid"})
+
+    def test_child_only_sees_self(self):
+        child = User.objects.create_user(username="kid", password="pw12345678", role=User.CHILD)
+        User.objects.create_user(username="parent", password="pw12345678", role=User.PARENT)
+        self.client.force_authenticate(user=child)
+        resp = self.client.get(reverse("users-list"))
+        usernames = {row["username"] for row in resp.data}
+        self.assertEqual(usernames, {"kid"})
+
+
 class CreateParentCommandTests(TestCase):
     def test_creates_parent_with_usable_password(self):
         call_command("create_parent", "--username", "root", "--password", "correct-horse-1", "--no-input")

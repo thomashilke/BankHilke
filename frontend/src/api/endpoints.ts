@@ -36,6 +36,8 @@ export const usersApi = {
     api.post<User>("/users/", { ...payload, role: "parent" }).then((r) => r.data),
   update: (userId: number, payload: { language: Language }) =>
     api.patch<User>(`/users/${userId}/`, payload).then((r) => r.data),
+  changePassword: (payload: { current_password: string; new_password: string }) =>
+    api.post<{ detail: string }>("/users/change-password/", payload).then((r) => r.data),
 };
 
 export const guardianshipsApi = {

@@ -79,3 +79,26 @@ class GuardianshipSerializer(serializers.ModelSerializer):
             return User.objects.get(username=value, role=User.PARENT)
         except User.DoesNotExist:
             raise serializers.ValidationError("no parent account with that username exists")
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    """Self-service password change -- requires the caller's current
+    password so a stolen/left-open session can't be used to lock the real
+    owner out. `save()` operates on `context["request"].user`; there is no
+    `instance`/`create` path, this is never used to set another user's
+    password."""
+
+    current_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True, min_length=8)
+
+    def validate_current_password(self, value):
+        user = self.context["request"].user
+        if not user.check_password(value):
+            raise serializers.ValidationError("current password is incorrect")
+        return value
+
+    def save(self):
+        user = self.context["request"].user
+        user.set_password(self.validated_data["new_password"])
+        user.save(update_fields=["password"])
+        return user

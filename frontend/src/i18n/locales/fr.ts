@@ -61,6 +61,7 @@ const fr: Translation = {
   nav: {
     signOut: "D\u00e9connexion",
     language: "Langue",
+    changePassword: "Changer le mot de passe",
   },
   login: {
     heading: "Connectez-vous \u00e0 votre compte",
@@ -194,6 +195,28 @@ const fr: Translation = {
     interestLabel: "Int\u00e9r\u00eats ({{schedule}}, {{rate}}\u00a0%/an)",
     creditedAmount: "+{{amount}}",
     estimatedAmount: "\u2248 {{amount}}",
+  },
+  changePassword: {
+    title: "Changer le mot de passe",
+    subtitle: "Mettez \u00e0 jour le mot de passe utilis\u00e9 pour vous connecter \u00e0 ce compte",
+    currentPassword: "Mot de passe actuel",
+    newPassword: "Nouveau mot de passe",
+    success: "Mot de passe mis \u00e0 jour.",
+    error: "Impossible de mettre \u00e0 jour votre mot de passe.",
+  },
+  adminUsers: {
+    title: "Tous les utilisateurs",
+    subtitle: "Tous les comptes de la plateforme -- visible par les parents disposant de droits d'administration",
+    viewButton: "Voir tous les utilisateurs",
+    hideButton: "Masquer",
+    usernameCol: "Nom d'utilisateur",
+    nameCol: "Nom",
+    roleCol: "R\u00f4le",
+    emailCol: "E-mail",
+    adminCol: "Admin",
+    yes: "Oui",
+    no: "Non",
+    empty: "Aucun utilisateur trouv\u00e9.",
   },
 };
 

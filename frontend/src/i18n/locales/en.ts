@@ -62,6 +62,7 @@ const en = {
   nav: {
     signOut: "Sign out",
     language: "Language",
+    changePassword: "Change password",
   },
   login: {
     heading: "Sign in to your account",
@@ -194,6 +195,28 @@ const en = {
     interestLabel: "Interest ({{schedule}}, {{rate}}%/yr)",
     creditedAmount: "+{{amount}}",
     estimatedAmount: "\u2248 {{amount}}",
+  },
+  changePassword: {
+    title: "Change password",
+    subtitle: "Update the password used to sign in to this account",
+    currentPassword: "Current password",
+    newPassword: "New password",
+    success: "Password updated.",
+    error: "Could not update your password.",
+  },
+  adminUsers: {
+    title: "All users",
+    subtitle: "Every account on the platform -- visible to parents with administrative rights",
+    viewButton: "View all users",
+    hideButton: "Hide",
+    usernameCol: "Username",
+    nameCol: "Name",
+    roleCol: "Role",
+    emailCol: "Email",
+    adminCol: "Admin",
+    yes: "Yes",
+    no: "No",
+    empty: "No users found.",
   },
 };
 
