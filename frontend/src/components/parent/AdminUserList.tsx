@@ -1,21 +1,16 @@
 import { useTranslation } from "react-i18next";
 import type { User } from "../../types/api";
-import { Card, CardHeader, EmptyState, SecondaryButton } from "../ui";
+import { Card, CardHeader, EmptyState } from "../ui";
 
-/** Full user directory, visible only to parents with administrative rights
- * (`is_staff`) -- the backend already scopes `GET /users/` to every account
- * for them (see apps.users.views.UserViewSet.get_queryset), so this simply
- * renders whatever the API returned. */
-export function AdminUserList({ users, onClose }: { users: User[]; onClose: () => void }) {
+/** Full user directory, rendered on the standalone admin page -- reachable
+ * only by parents with administrative rights (`is_staff`); see
+ * pages/admin/AdminUsersPage.tsx and apps.users.views.UserViewSet.all. */
+export function AdminUserList({ users }: { users: User[] }) {
   const { t } = useTranslation();
 
   return (
-    <Card className="mb-6">
-      <CardHeader
-        title={t("adminUsers.title")}
-        subtitle={t("adminUsers.subtitle")}
-        action={<SecondaryButton onClick={onClose}>{t("adminUsers.hideButton")}</SecondaryButton>}
-      />
+    <Card>
+      <CardHeader title={t("adminUsers.title")} subtitle={t("adminUsers.subtitle")} />
       {users.length === 0 ? (
         <EmptyState>{t("adminUsers.empty")}</EmptyState>
       ) : (

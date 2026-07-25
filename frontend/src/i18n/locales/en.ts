@@ -63,6 +63,7 @@ const en = {
     signOut: "Sign out",
     language: "Language",
     changePassword: "Change password",
+    manageUsers: "Manage users",
   },
   login: {
     heading: "Sign in to your account",
@@ -207,8 +208,11 @@ const en = {
   adminUsers: {
     title: "All users",
     subtitle: "Every account on the platform -- visible to parents with administrative rights",
-    viewButton: "View all users",
-    hideButton: "Hide",
+    pageTitle: "User directory",
+    pageSubtitle: "Every parent and child account on the platform, across all guardianships",
+    backLink: "\u2190 Back to dashboard",
+    loading: "Loading users",
+    loadError: "Could not load the user directory.",
     usernameCol: "Username",
     nameCol: "Name",
     roleCol: "Role",

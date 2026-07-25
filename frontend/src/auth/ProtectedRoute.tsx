@@ -4,10 +4,19 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "./useAuth";
 import type { Role } from "../types/api";
 
-/** Gates a route on authentication and, optionally, a required role. Wrong
- * role redirects to that user's own dashboard rather than the login page,
- * since they *are* authenticated -- just not authorized for this view. */
-export function ProtectedRoute({ role, children }: { role?: Role; children: ReactNode }) {
+/** Gates a route on authentication and, optionally, a required role and/or
+ * administrative rights (`is_staff`). Wrong role/rights redirects to that
+ * user's own dashboard rather than the login page, since they *are*
+ * authenticated -- just not authorized for this view. */
+export function ProtectedRoute({
+  role,
+  requireAdmin,
+  children,
+}: {
+  role?: Role;
+  requireAdmin?: boolean;
+  children: ReactNode;
+}) {
   const { t } = useTranslation();
   const { user, status } = useAuth();
 
@@ -23,7 +32,7 @@ export function ProtectedRoute({ role, children }: { role?: Role; children: Reac
     return <Navigate to="/login" replace />;
   }
 
-  if (role && user.role !== role) {
+  if ((role && user.role !== role) || (requireAdmin && !user.is_staff)) {
     return <Navigate to={user.role === "parent" ? "/parent" : "/child"} replace />;
   }
 

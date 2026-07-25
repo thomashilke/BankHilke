@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/useAuth";
 import { LanguageSwitcher } from "./LanguageSwitcher";
@@ -40,6 +41,14 @@ export function NavBar() {
                 {user.first_name || user.username}
               </span>
             </div>
+            {user.is_staff && (
+              <Link
+                to="/admin/users"
+                className="inline-flex items-center justify-center rounded-md border border-ink-200 px-3.5 py-2 text-sm font-medium text-ink-700 transition hover:border-ink-300 hover:bg-ink-50"
+              >
+                {t("nav.manageUsers")}
+              </Link>
+            )}
             <SecondaryButton onClick={() => setShowChangePassword((shown) => !shown)}>
               {t("nav.changePassword")}
             </SecondaryButton>

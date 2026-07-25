@@ -329,24 +329,58 @@ class ChangePasswordTests(APITestCase):
         self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.data)
 
 
-class AdminUserListTests(APITestCase):
-    """A parent with administrative rights (is_staff) can see every user on
-    the platform; everyone else's list stays scoped to self (+ guarded
-    children for a regular parent)."""
+class AdminAllUsersEndpointTests(APITestCase):
+    """`GET /users/all/` is a dedicated administrative endpoint: only a
+    parent with `is_staff` can reach it, and it returns every account on the
+    platform. The regular `GET /users/` list stays scoped to self (+ guarded
+    children for a parent) regardless of `is_staff`, so a staff parent's own
+    dashboard never mixes in unrelated accounts."""
 
-    def test_staff_parent_sees_every_user(self):
+    def test_staff_parent_sees_every_user_via_admin_endpoint(self):
         admin = User.objects.create_user(
             username="admin", password="pw12345678", role=User.PARENT, is_staff=True,
         )
         other_parent = User.objects.create_user(username="parent2", password="pw12345678", role=User.PARENT)
         unrelated_child = User.objects.create_user(username="kid", password="pw12345678", role=User.CHILD)
         self.client.force_authenticate(user=admin)
-        resp = self.client.get(reverse("users-list"))
+        resp = self.client.get(reverse("users-all"))
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         usernames = {row["username"] for row in resp.data}
         self.assertEqual(usernames, {"admin", "parent2", "kid"})
         self.assertIn(other_parent.username, usernames)
         self.assertIn(unrelated_child.username, usernames)
+
+    def test_non_staff_parent_cannot_reach_admin_endpoint(self):
+        parent = User.objects.create_user(username="parent", password="pw12345678", role=User.PARENT)
+        self.client.force_authenticate(user=parent)
+        resp = self.client.get(reverse("users-all"))
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_child_cannot_reach_admin_endpoint(self):
+        child = User.objects.create_user(username="kid", password="pw12345678", role=User.CHILD)
+        self.client.force_authenticate(user=child)
+        resp = self.client.get(reverse("users-all"))
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_anonymous_cannot_reach_admin_endpoint(self):
+        resp = self.client.get(reverse("users-all"))
+        self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_staff_parents_own_dashboard_list_stays_guardian_scoped(self):
+        """Regression guard: administrative rights must not leak into the
+        regular list endpoint, or a staff parent's own dashboard would show
+        every child in the system instead of just the ones they guard."""
+        admin = User.objects.create_user(
+            username="admin", password="pw12345678", role=User.PARENT, is_staff=True,
+        )
+        guarded_child = User.objects.create_user(username="kid", password="pw12345678", role=User.CHILD)
+        Guardianship.objects.create(parent=admin, child=guarded_child)
+        User.objects.create_user(username="unrelated_kid", password="pw12345678", role=User.CHILD)
+        User.objects.create_user(username="unrelated_parent", password="pw12345678", role=User.PARENT)
+        self.client.force_authenticate(user=admin)
+        resp = self.client.get(reverse("users-list"))
+        usernames = {row["username"] for row in resp.data}
+        self.assertEqual(usernames, {"admin", "kid"})
 
     def test_non_staff_parent_only_sees_self_and_guarded_children(self):
         parent = User.objects.create_user(username="parent", password="pw12345678", role=User.PARENT)

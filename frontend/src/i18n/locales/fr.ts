@@ -62,6 +62,7 @@ const fr: Translation = {
     signOut: "D\u00e9connexion",
     language: "Langue",
     changePassword: "Changer le mot de passe",
+    manageUsers: "G\u00e9rer les utilisateurs",
   },
   login: {
     heading: "Connectez-vous \u00e0 votre compte",
@@ -207,8 +208,11 @@ const fr: Translation = {
   adminUsers: {
     title: "Tous les utilisateurs",
     subtitle: "Tous les comptes de la plateforme -- visible par les parents disposant de droits d'administration",
-    viewButton: "Voir tous les utilisateurs",
-    hideButton: "Masquer",
+    pageTitle: "Annuaire des utilisateurs",
+    pageSubtitle: "Tous les comptes parents et enfants de la plateforme, toutes tutelles confondues",
+    backLink: "\u2190 Retour au tableau de bord",
+    loading: "Chargement des utilisateurs",
+    loadError: "Impossible de charger l'annuaire des utilisateurs.",
     usernameCol: "Nom d'utilisateur",
     nameCol: "Nom",
     roleCol: "R\u00f4le",

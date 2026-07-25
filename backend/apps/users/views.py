@@ -5,7 +5,7 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
-from api.permissions import IsParent
+from api.permissions import IsAdminParent, IsParent
 from apps.users.models import Guardianship, User
 from apps.users.serializers import ChangePasswordSerializer, GuardianshipSerializer, UserSerializer
 
@@ -33,20 +33,29 @@ class UserViewSet(ModelViewSet):
             return [permissions.AllowAny()]
         if self.action in ("retrieve", "update", "partial_update", "destroy"):
             return [permissions.IsAuthenticated(), IsSelfOrGuardianParent()]
+        if self.action == "all":
+            return [permissions.IsAuthenticated(), IsAdminParent()]
         return [permissions.IsAuthenticated()]
 
     def get_queryset(self):
         user = self.request.user
         if not user.is_authenticated:
             return User.objects.none()
-        if self.action == "list" and user.role == User.PARENT and user.is_staff:
-            # Administrative parents can see every account on the ledger,
-            # not just themselves + their own guarded children.
-            return User.objects.all()
         if user.role == User.PARENT:
+            # A parent's own dashboard is always scoped to their guarded
+            # children, administrative rights or not -- the full
+            # cross-guardianship directory lives only behind `all` below,
+            # kept separate so it can't leak into the guardianship view.
             child_ids = Guardianship.objects.filter(parent=user).values_list("child_id", flat=True)
             return User.objects.filter(Q(id=user.id) | Q(id__in=child_ids))
         return User.objects.filter(id=user.id)
+
+    @action(detail=False, methods=["get"], url_path="all")
+    def all(self, request):
+        """Every account on the platform -- administrative parents
+        (`is_staff`) only, see `IsAdminParent`/`get_permissions`."""
+        serializer = self.get_serializer(User.objects.all(), many=True)
+        return Response(serializer.data)
 
     @action(detail=False, methods=["post"], url_path="change-password")
     def change_password(self, request):

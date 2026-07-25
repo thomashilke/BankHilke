@@ -8,27 +8,23 @@ import { NavBar } from "../../components/NavBar";
 import { ChildCard } from "../../components/parent/ChildCard";
 import { AddChildForm } from "../../components/parent/AddChildForm";
 import { AddParentForm } from "../../components/parent/AddParentForm";
-import { AdminUserList } from "../../components/parent/AdminUserList";
 import { ErrorAlert, EmptyState, PrimaryButton, SecondaryButton, Spinner } from "../../components/ui";
 
 export function ParentDashboard() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const [children, setChildren] = useState<User[]>([]);
-  const [allUsers, setAllUsers] = useState<User[]>([]);
   const [accountsByOwner, setAccountsByOwner] = useState<Map<number, Account>>(new Map());
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [showAddChild, setShowAddChild] = useState(false);
   const [showAddParent, setShowAddParent] = useState(false);
-  const [showAllUsers, setShowAllUsers] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const [users, accounts] = await Promise.all([usersApi.list(), accountsApi.list()]);
-      setAllUsers(users);
       setChildren(users.filter((u) => u.role === "child"));
       setAccountsByOwner(new Map(accounts.map((a) => [a.owner, a])));
     } catch (err) {
@@ -52,9 +48,6 @@ export function ParentDashboard() {
             <p className="mt-1 text-sm text-ink-500">{t("parent.dashboardSubtitle")}</p>
           </div>
           <div className="flex gap-3">
-            {user?.is_staff && !showAllUsers && (
-              <SecondaryButton onClick={() => setShowAllUsers(true)}>{t("adminUsers.viewButton")}</SecondaryButton>
-            )}
             {user?.is_staff && !showAddParent && (
               <SecondaryButton onClick={() => setShowAddParent(true)}>{t("parent.addParentButton")}</SecondaryButton>
             )}
@@ -73,8 +66,6 @@ export function ParentDashboard() {
         {showAddParent && (
           <AddParentForm onCreated={() => setShowAddParent(false)} onCancel={() => setShowAddParent(false)} />
         )}
-
-        {showAllUsers && <AdminUserList users={allUsers} onClose={() => setShowAllUsers(false)} />}
 
         {showAddChild && (
           <AddChildForm

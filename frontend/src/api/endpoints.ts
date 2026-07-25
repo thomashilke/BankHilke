@@ -24,6 +24,7 @@ export const authApi = {
 export const usersApi = {
   me: (userId: number) => api.get<User>(`/users/${userId}/`).then((r) => r.data),
   list: () => api.get<User[]>("/users/").then((r) => r.data),
+  listAll: () => api.get<User[]>("/users/all/").then((r) => r.data),
   registerChild: (payload: {
     username: string;
     password: string;

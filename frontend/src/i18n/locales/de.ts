@@ -62,6 +62,7 @@ const de: Translation = {
     signOut: "Abmelden",
     language: "Sprache",
     changePassword: "Passwort \u00e4ndern",
+    manageUsers: "Benutzer verwalten",
   },
   login: {
     heading: "Bei Ihrem Konto anmelden",
@@ -207,8 +208,11 @@ const de: Translation = {
   adminUsers: {
     title: "Alle Benutzer",
     subtitle: "Alle Konten der Plattform -- sichtbar f\u00fcr Eltern mit Administratorrechten",
-    viewButton: "Alle Benutzer anzeigen",
-    hideButton: "Ausblenden",
+    pageTitle: "Benutzerverzeichnis",
+    pageSubtitle: "Alle Eltern- und Kinderkonten der Plattform, \u00fcber alle Vormundschaften hinweg",
+    backLink: "\u2190 Zur\u00fcck zum Dashboard",
+    loading: "Benutzer werden geladen",
+    loadError: "Das Benutzerverzeichnis konnte nicht geladen werden.",
     usernameCol: "Benutzername",
     nameCol: "Name",
     roleCol: "Rolle",
