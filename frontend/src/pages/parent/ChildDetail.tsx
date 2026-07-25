@@ -143,7 +143,7 @@ export function ChildDetail() {
                   balance={state.account.balance}
                   currency={state.account.currency}
                 />
-                <div className="flex items-center gap-2 rounded-xl border border-ink-200 bg-white px-4 py-3">
+                <div className="flex items-center gap-2 rounded-xl border border-ink-200 bg-paper px-4 py-3">
                   <label htmlFor="child-detail-currency" className="text-xs font-medium text-ink-500">
                     {t("common.currency")}
                   </label>
@@ -152,7 +152,7 @@ export function ChildDetail() {
                     value={state.account.currency}
                     onChange={(e) => handleCurrencyChange(e.target.value as Currency)}
                     disabled={currencySaving}
-                    className="ml-auto rounded-md border border-ink-200 bg-white px-2 py-1 text-xs font-medium text-ink-700 disabled:opacity-50"
+                    className="ml-auto rounded-md border border-ink-200 bg-paper px-2 py-1 text-xs font-medium text-ink-700 disabled:opacity-50"
                   >
                     {CURRENCY_OPTIONS.map((code) => (
                       <option key={code} value={code}>

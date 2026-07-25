@@ -4,29 +4,39 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 
-  --color-brand-50: #eef4ff;
-  --color-brand-100: #dbe6fe;
-  --color-brand-200: #bfd2fe;
-  --color-brand-300: #93b3fd;
-  --color-brand-400: #6089fa;
-  --color-brand-500: #3c65f0;
-  --color-brand-600: #2647e0;
-  --color-brand-700: #2038c4;
-  --color-brand-800: #1e309e;
-  --color-brand-900: #1c2c7d;
-  --color-brand-950: #141b49;
+  --color-brand-50: #f4f7fb;
+  --color-brand-100: #e5edf6;
+  --color-brand-200: #c6d8ec;
+  --color-brand-300: #99b9db;
+  --color-brand-400: #6391c5;
+  --color-brand-500: #3a6ba6;
+  --color-brand-600: #2a5284;
+  --color-brand-700: #1e3d67;
+  --color-brand-800: #152f51;
+  --color-brand-900: #10233c;
+  --color-brand-950: #091425;
 
-  --color-ink-50: #f6f7f9;
-  --color-ink-100: #eceef2;
-  --color-ink-200: #d6dae2;
-  --color-ink-300: #b1b9c8;
-  --color-ink-400: #8792a8;
-  --color-ink-500: #67728c;
-  --color-ink-600: #525c74;
-  --color-ink-700: #434b5f;
-  --color-ink-800: #2f3547;
-  --color-ink-900: #1c202d;
-  --color-ink-950: #10121b;
+  /* Exact background of the crest logos (bankhilke-logo-*-cropped.png) --
+     used as the sitewide "surface" color so cards/headers blend into the
+     artwork with no visible seam. */
+  --color-paper: #f8f0e7;
+
+  --color-gold-100: #f2e8d9;
+  --color-gold-300: #d2b489;
+  --color-gold-500: #a77a44;
+  --color-gold-600: #8d6435;
+
+  --color-ink-50: #f0e6db;
+  --color-ink-100: #e3d6c9;
+  --color-ink-200: #cfbfb0;
+  --color-ink-300: #b2a090;
+  --color-ink-400: #907e6f;
+  --color-ink-500: #736459;
+  --color-ink-600: #5b4c43;
+  --color-ink-700: #2b3a50;
+  --color-ink-800: #1d2b3e;
+  --color-ink-900: #131e2f;
+  --color-ink-950: #0b121e;
 }
 
 @layer base {

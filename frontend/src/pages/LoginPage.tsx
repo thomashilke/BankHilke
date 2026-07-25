@@ -30,19 +30,18 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-ink-50 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-paper px-4">
       <div className="w-full max-w-sm">
-        <div className="mb-8 flex flex-col items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-700 font-mono text-lg font-semibold text-white">
-            BH
-          </div>
-          <div className="text-center">
-            <h1 className="text-lg font-semibold text-ink-900">BankHilke</h1>
-            <p className="text-sm text-ink-400">{t("common.tagline")}</p>
-          </div>
+        <div className="mb-6 flex flex-col items-center">
+          <img
+            src="/bankhilke-logo-large-cropped.png"
+            alt="BankHilke — Virtual Banking"
+            className="w-56 sm:w-64"
+          />
+          <div className="mt-2 h-px w-16 bg-gradient-to-r from-transparent via-gold-500 to-transparent" />
         </div>
 
-        <form onSubmit={handleSubmit} className="rounded-xl border border-ink-200 bg-white p-6 shadow-sm shadow-ink-900/[0.02]">
+        <form onSubmit={handleSubmit} className="rounded-xl border border-ink-200 bg-paper p-6 shadow-sm shadow-ink-900/[0.02]">
           <h2 className="mb-4 text-sm font-semibold text-ink-900">{t("login.heading")}</h2>
 
           {error && (

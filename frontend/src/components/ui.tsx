@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 export function Card({ className = "", children, ...rest }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={`rounded-xl border border-ink-200 bg-white shadow-sm shadow-ink-900/[0.02] ${className}`}
+      className={`rounded-xl border border-ink-200 bg-paper shadow-sm shadow-ink-900/[0.02] ${className}`}
       {...rest}
     >
       {children}

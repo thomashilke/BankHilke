@@ -15,13 +15,11 @@ export function NavBar() {
   const initials = (user.first_name?.[0] ?? user.username[0]).toUpperCase();
 
   return (
-    <header className="border-b border-ink-200 bg-white">
+    <header className="border-b border-ink-200 bg-paper">
       <div className="mx-auto max-w-6xl px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-700 font-mono text-sm font-semibold text-white">
-              BH
-            </div>
+            <img src="/bankhilke-logo-small-cropped.png" alt="" className="h-10 w-auto" />
             <div>
               <p className="text-sm font-semibold tracking-tight text-ink-900">BankHilke</p>
               <p className="text-xs text-ink-400">{t("common.tagline")}</p>

@@ -20,7 +20,7 @@ export function LanguageSwitcher() {
           // a failed PATCH just means the preference isn't saved server-side.
         });
       }}
-      className="rounded-md border border-ink-200 bg-white px-2 py-1.5 text-sm font-medium text-ink-600 shadow-sm outline-none transition hover:border-ink-300 hover:bg-ink-50 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+      className="rounded-md border border-ink-200 bg-paper px-2 py-1.5 text-sm font-medium text-ink-600 shadow-sm outline-none transition hover:border-ink-300 hover:bg-ink-50 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
     >
       {SUPPORTED_LANGUAGES.map((code) => (
         <option key={code} value={code}>
