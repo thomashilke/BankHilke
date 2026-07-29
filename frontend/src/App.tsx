@@ -5,6 +5,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { ChildDashboard } from "./pages/child/ChildDashboard";
 import { ParentDashboard } from "./pages/parent/ParentDashboard";
 import { ChildDetail } from "./pages/parent/ChildDetail";
+import { QuickActionPage } from "./pages/parent/QuickActionPage";
 import { AdminUsersPage } from "./pages/admin/AdminUsersPage";
 
 function RoleHome() {
@@ -48,6 +49,14 @@ export default function App() {
         element={
           <ProtectedRoute role="parent">
             <ChildDetail />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/parent/quick-action/:action"
+        element={
+          <ProtectedRoute role="parent">
+            <QuickActionPage />
           </ProtectedRoute>
         }
       />

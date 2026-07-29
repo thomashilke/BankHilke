@@ -96,7 +96,7 @@ export function ChangePasswordForm({ onDone }: { onDone: () => void }) {
           </div>
         </div>
 
-        <div className="flex justify-end gap-3 pt-1">
+        <div className="flex flex-col-reverse gap-3 pt-1 sm:flex-row sm:justify-end">
           <SecondaryButton type="button" onClick={onDone} disabled={saving}>
             {t("common.cancel")}
           </SecondaryButton>

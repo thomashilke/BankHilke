@@ -41,13 +41,13 @@ export function ParentDashboard() {
   return (
     <div className="min-h-screen bg-ink-50">
       <NavBar />
-      <main className="mx-auto max-w-6xl px-6 py-8">
-        <div className="mb-6 flex items-start justify-between gap-4">
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+        <div className="mb-6 flex flex-col items-start gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-xl font-semibold text-ink-900">{t("parent.dashboardTitle")}</h1>
             <p className="mt-1 text-sm text-ink-500">{t("parent.dashboardSubtitle")}</p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
             {user?.is_staff && !showAddParent && (
               <SecondaryButton onClick={() => setShowAddParent(true)}>{t("parent.addParentButton")}</SecondaryButton>
             )}

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/useAuth";
 import {
@@ -16,6 +16,7 @@ import { NavBar } from "../../components/NavBar";
 import { BalanceCard } from "../../components/BalanceCard";
 import { TransactionTable } from "../../components/TransactionTable";
 import { DepositWithdrawForm } from "../../components/parent/DepositWithdrawForm";
+import { isAction } from "../../lib/action";
 import { AllowanceRuleEditor } from "../../components/parent/AllowanceRuleEditor";
 import { InterestRuleEditor } from "../../components/parent/InterestRuleEditor";
 import { ReconciliationPanel } from "../../components/parent/ReconciliationPanel";
@@ -37,6 +38,15 @@ export function ChildDetail() {
   const { childId: childIdParam } = useParams<{ childId: string }>();
   const childId = Number(childIdParam);
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  // One-shot cue captured on mount: arriving via a deposit/withdraw
+  // shortcut carries `?action=`, consumed once then scrubbed from the URL
+  // below so a later refresh/share doesn't re-trigger the highlight.
+  const [initialAction] = useState(() => {
+    const raw = searchParams.get("action");
+    return isAction(raw) ? raw : null;
+  });
   const [state, setState] = useState<ChildState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -95,10 +105,18 @@ export function ChildDetail() {
     load();
   }, [load]);
 
+  useEffect(() => {
+    if (!initialAction) return;
+    navigate(`/parent/children/${childId}`, { replace: true });
+    // Runs once on mount to strip the one-shot `?action=` param; `navigate`
+    // and `childId` are stable for the lifetime of this route.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <div className="min-h-screen bg-ink-50">
       <NavBar />
-      <main className="mx-auto max-w-6xl px-6 py-8">
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
         <Link to="/parent" className="mb-4 inline-block text-sm font-medium text-brand-600 hover:text-brand-700">
           {t("childDetail.backLink")}
         </Link>
@@ -113,7 +131,7 @@ export function ChildDetail() {
           <Spinner label={t("childDetail.loading")} />
         ) : (
           <>
-            <div className="mb-6 flex items-center justify-between">
+            <div className="mb-6 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h1 className="text-xl font-semibold text-ink-900">
                   {state.child.first_name ? `${state.child.first_name} ${state.child.last_name}`.trim() : state.child.username}
@@ -121,7 +139,9 @@ export function ChildDetail() {
                 <p className="text-sm text-ink-500">@{state.child.username}</p>
               </div>
               {!showLinkGuardian && (
-                <PrimaryButton onClick={() => setShowLinkGuardian(true)}>{t("childDetail.linkGuardianButton")}</PrimaryButton>
+                <PrimaryButton className="w-full sm:w-auto" onClick={() => setShowLinkGuardian(true)}>
+                  {t("childDetail.linkGuardianButton")}
+                </PrimaryButton>
               )}
             </div>
 
@@ -165,6 +185,7 @@ export function ChildDetail() {
                   accountId={state.account.id}
                   currency={state.account.currency}
                   onPosted={() => load()}
+                  initialAction={initialAction}
                 />
               </div>
 

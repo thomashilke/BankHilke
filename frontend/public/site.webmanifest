@@ -1,0 +1,64 @@
+{
+  "name": "BankHilke",
+  "short_name": "BankHilke",
+  "description": "Family allowance banking",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f8f0e7",
+  "theme_color": "#f8f0e7",
+  "icons": [
+    {
+      "src": "/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/maskable-icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/maskable-icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Deposit",
+      "short_name": "Deposit",
+      "description": "Deposit money into a child's account",
+      "url": "/parent/quick-action/deposit",
+      "icons": [
+        {
+          "src": "/shortcut-deposit-192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Withdraw",
+      "short_name": "Withdraw",
+      "description": "Withdraw money from a child's account",
+      "url": "/parent/quick-action/withdraw",
+      "icons": [
+        {
+          "src": "/shortcut-withdraw-192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
+}

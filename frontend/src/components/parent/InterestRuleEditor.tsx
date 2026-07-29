@@ -72,7 +72,7 @@ export function InterestRuleEditor({
       <form onSubmit={handleSubmit} className="space-y-4 px-5 py-4">
         {error && <ErrorAlert message={error} />}
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <Label>{t(schedule === "weekly" ? "interest.rateLabelWeekly" : "interest.rateLabelMonthly")}</Label>
             <input
@@ -107,7 +107,7 @@ export function InterestRuleEditor({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {schedule === "weekly" ? (
             <div>
               <Label>{t("common.dayOfWeek")}</Label>

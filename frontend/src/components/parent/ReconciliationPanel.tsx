@@ -61,41 +61,43 @@ export function ReconciliationPanel({
           ))}
         </div>
 
-        <table className="mt-4 w-full text-sm">
-          <thead>
-            <tr className="text-left text-xs uppercase tracking-wide text-ink-400">
-              <th className="py-2 font-medium">{t("reconciliation.guardianCol")}</th>
-              <th className="py-2 text-right font-medium">{t("reconciliation.givenCol")}</th>
-              <th className="py-2 text-right font-medium">{t("reconciliation.withdrawnCol")}</th>
-              <th className="py-2 text-right font-medium">{t("reconciliation.netCol")}</th>
-              <th className="py-2 text-right font-medium">{t("reconciliation.shareCol")}</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-ink-100">
-            {rows.map((row, index) => (
-              <tr key={row.parent_id}>
-                <td className="py-2.5">
-                  <span className="flex items-center gap-2">
-                    <span className={`h-2 w-2 rounded-full ${SHARE_COLORS[index % SHARE_COLORS.length]}`} />
-                    {row.parent_username}
-                  </span>
-                </td>
-                <td className="py-2.5 text-right font-mono tabular text-emerald-600">
-                  {formatCurrency(row.total_given, currency)}
-                </td>
-                <td className="py-2.5 text-right font-mono tabular text-red-600">
-                  {formatCurrency(row.total_taken, currency)}
-                </td>
-                <td className="py-2.5 text-right font-mono tabular font-medium text-ink-900">
-                  {formatCurrency(row.net_contribution, currency)}
-                </td>
-                <td className="py-2.5 text-right text-ink-500">
-                  {((row.total_given / totalGiven) * 100).toFixed(0)}%
-                </td>
+        <div className="mt-4 overflow-x-auto">
+          <table className="text-sm">
+            <thead>
+              <tr className="text-left text-xs uppercase tracking-wide text-ink-400">
+                <th className="whitespace-nowrap py-2 pr-4 font-medium">{t("reconciliation.guardianCol")}</th>
+                <th className="whitespace-nowrap py-2 pl-4 text-right font-medium">{t("reconciliation.givenCol")}</th>
+                <th className="whitespace-nowrap py-2 pl-4 text-right font-medium">{t("reconciliation.withdrawnCol")}</th>
+                <th className="whitespace-nowrap py-2 pl-4 text-right font-medium">{t("reconciliation.netCol")}</th>
+                <th className="whitespace-nowrap py-2 pl-4 text-right font-medium">{t("reconciliation.shareCol")}</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-ink-100">
+              {rows.map((row, index) => (
+                <tr key={row.parent_id}>
+                  <td className="whitespace-nowrap py-2.5 pr-4">
+                    <span className="flex items-center gap-2">
+                      <span className={`h-2 w-2 shrink-0 rounded-full ${SHARE_COLORS[index % SHARE_COLORS.length]}`} />
+                      {row.parent_username}
+                    </span>
+                  </td>
+                  <td className="whitespace-nowrap py-2.5 pl-4 text-right font-mono tabular text-emerald-600">
+                    {formatCurrency(row.total_given, currency)}
+                  </td>
+                  <td className="whitespace-nowrap py-2.5 pl-4 text-right font-mono tabular text-red-600">
+                    {formatCurrency(row.total_taken, currency)}
+                  </td>
+                  <td className="whitespace-nowrap py-2.5 pl-4 text-right font-mono tabular font-medium text-ink-900">
+                    {formatCurrency(row.net_contribution, currency)}
+                  </td>
+                  <td className="whitespace-nowrap py-2.5 pl-4 text-right text-ink-500">
+                    {((row.total_given / totalGiven) * 100).toFixed(0)}%
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </Card>
   );

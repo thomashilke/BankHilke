@@ -153,7 +153,7 @@ export function AddChildForm({
           </div>
         </div>
 
-        <div className="flex gap-3 pt-1">
+        <div className="flex flex-col gap-3 pt-1 sm:flex-row">
           <PrimaryButton type="submit" className="flex-1" disabled={saving || !username || !password}>
             {saving ? t("addChild.submitting") : t("addChild.submit")}
           </PrimaryButton>

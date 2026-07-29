@@ -105,7 +105,13 @@ const en = {
   },
   childCard: {
     balanceLabel: "Balance",
-    manageLink: "Manage account \u2192",
+    depositAction: "Deposit",
+    withdrawAction: "Withdraw",
+  },
+  quickAction: {
+    depositTitle: "Deposit \u2014 pick a child",
+    withdrawTitle: "Withdraw \u2014 pick a child",
+    subtitle: "Choose which child's account to post this to.",
   },
   addChild: {
     title: "Add a child",

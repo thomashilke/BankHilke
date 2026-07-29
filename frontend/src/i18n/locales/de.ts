@@ -105,7 +105,13 @@ const de: Translation = {
   },
   childCard: {
     balanceLabel: "Kontostand",
-    manageLink: "Konto verwalten \u2192",
+    depositAction: "Einzahlen",
+    withdrawAction: "Auszahlen",
+  },
+  quickAction: {
+    depositTitle: "Einzahlung \u2014 Kind ausw\u00e4hlen",
+    withdrawTitle: "Auszahlung \u2014 Kind ausw\u00e4hlen",
+    subtitle: "W\u00e4hlen Sie das Kinderkonto f\u00fcr diese Buchung.",
   },
   addChild: {
     title: "Kind hinzuf\u00fcgen",

@@ -73,7 +73,7 @@ export function ChildDashboard() {
   return (
     <div className="min-h-screen bg-ink-50">
       <NavBar />
-      <main className="mx-auto max-w-6xl px-6 py-8">
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
         <h1 className="mb-6 text-xl font-semibold text-ink-900">
           {t("child.welcome", { name: user?.first_name || user?.username })}
         </h1>

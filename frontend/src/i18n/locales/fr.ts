@@ -105,7 +105,13 @@ const fr: Translation = {
   },
   childCard: {
     balanceLabel: "Solde",
-    manageLink: "G\u00e9rer le compte \u2192",
+    depositAction: "D\u00e9poser",
+    withdrawAction: "Retirer",
+  },
+  quickAction: {
+    depositTitle: "D\u00e9p\u00f4t \u2014 choisir un enfant",
+    withdrawTitle: "Retrait \u2014 choisir un enfant",
+    subtitle: "Choisissez le compte enfant concern\u00e9 par cette op\u00e9ration.",
   },
   addChild: {
     title: "Ajouter un enfant",
