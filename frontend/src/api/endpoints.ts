@@ -19,6 +19,8 @@ import type {
 export const authApi = {
   login: (username: string, password: string) =>
     api.post<TokenPair>("/auth/login/", { username, password }).then((r) => r.data),
+  googleConfig: () => api.get<{ client_id: string }>("/auth/google/").then((r) => r.data),
+  google: (credential: string) => api.post<TokenPair>("/auth/google/", { credential }).then((r) => r.data),
 };
 
 export const usersApi = {

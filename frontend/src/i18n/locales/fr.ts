@@ -73,6 +73,9 @@ const fr: Translation = {
     genericError: "\u00c9chec de la connexion.",
     invalidCredentials: "Nom d'utilisateur ou mot de passe invalide.",
     profileLoadFailed: "Connect\u00e9, mais impossible de charger votre profil.",
+    orDivider: "ou",
+    googleCta: "Nouveau ici\u00a0? Continuez avec Google pour cr\u00e9er votre compte parent.",
+    googleError: "Impossible de se connecter avec Google. Veuillez r\u00e9essayer.",
     footnote:
       "Les comptes parent et enfant partagent cette page de connexion \u2014 l'acc\u00e8s d\u00e9pend du r\u00f4le.",
   },

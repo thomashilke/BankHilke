@@ -130,6 +130,25 @@ its password/email/name updated rather than erroring, so it also works as a
 password reset. Log in with those credentials in the frontend, then use its
 dashboard to add children normally.
 
+### Signing in with Google (optional)
+
+Parents can also create/sign into their account from the front page ("Sign
+in with Google", `POST /api/auth/google/`) — no `create_initial_parent`
+step needed if this is set up, since it's its own open self-registration
+entrypoint (a first-time Google identity gets a new parent account, same
+as self-registering with a username/password). To enable it:
+
+1. In [Google Cloud Console](https://console.cloud.google.com/apis/credentials),
+   create an OAuth 2.0 Client ID of type "Web application".
+2. Under "Authorized JavaScript origins", add every origin the frontend is
+   served from (e.g. `http://localhost:5173` for `bun run dev`,
+   `https://bank.example.com` in production).
+3. Set `GOOGLE_OAUTH_CLIENT_ID` in `backend/.env` to the resulting client
+   id, then restart/redeploy the backend.
+
+Left unset (the default), the frontend's login page simply omits the
+Google button — no broken control, no backend error.
+
 ### Before deploying anywhere but a trusted local/staging host
 
 `backend/.env` ships with dev-only values (a placeholder `SECRET_KEY`, a

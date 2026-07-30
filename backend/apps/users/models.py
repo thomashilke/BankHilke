@@ -32,6 +32,17 @@ class User(AbstractUser):
         blank=True
     )
 
+    google_sub = models.CharField(
+        max_length=255,
+        unique=True,
+        null=True,
+        blank=True,
+        help_text="Google 'sub' claim -- set once this account signs in via "
+                   "Sign in with Google, and used to look it back up on "
+                   "every subsequent Google sign-in (see "
+                   "apps.users.services.GoogleAuthService).",
+    )
+
 
 class Guardianship(models.Model):
     """Links a parent to a child they are financially responsible for.

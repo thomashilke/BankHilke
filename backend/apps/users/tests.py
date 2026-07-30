@@ -1,6 +1,8 @@
+from unittest.mock import patch
+
 from django.core.management import call_command
 from django.core.management.base import CommandError
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -440,3 +442,122 @@ class CreateParentCommandTests(TestCase):
     def test_rejects_short_password(self):
         with self.assertRaises(CommandError):
             call_command("create_parent", "--username", "root", "--password", "short", "--no-input")
+
+
+@override_settings(GOOGLE_OAUTH_CLIENT_ID="test-client-id.apps.googleusercontent.com")
+class GoogleLoginTests(APITestCase):
+    """GoogleLoginView: the front-page "Sign in with Google" entrypoint.
+    Real credential *verification* (google.oauth2.id_token.verify_oauth2_token)
+    is mocked -- it's Google's own signature/audience check, not our logic
+    -- so these tests cover what GoogleAuthService does with the verified
+    claims."""
+
+    def _claims(self, **overrides):
+        return {
+            "sub": "google-sub-1",
+            "email": "newparent@example.com",
+            "email_verified": True,
+            "given_name": "Nina",
+            "family_name": "Newparent",
+            **overrides,
+        }
+
+    def test_client_id_empty_when_not_configured(self):
+        with override_settings(GOOGLE_OAUTH_CLIENT_ID=""):
+            resp = self.client.get(reverse("google_login"))
+        self.assertEqual(resp.data["client_id"], "")
+
+    def test_client_id_returned_when_configured(self):
+        resp = self.client.get(reverse("google_login"))
+        self.assertEqual(resp.data["client_id"], "test-client-id.apps.googleusercontent.com")
+
+    def test_post_without_credential_is_rejected(self):
+        resp = self.client.post(reverse("google_login"), {})
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_post_unconfigured_is_rejected(self):
+        with override_settings(GOOGLE_OAUTH_CLIENT_ID=""):
+            resp = self.client.post(reverse("google_login"), {"credential": "whatever"})
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+    @patch("apps.users.services.google_id_token.verify_oauth2_token")
+    def test_invalid_credential_is_rejected(self, verify):
+        verify.side_effect = ValueError("bad signature")
+        resp = self.client.post(reverse("google_login"), {"credential": "bogus"})
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+    @patch("apps.users.services.google_id_token.verify_oauth2_token")
+    def test_new_google_identity_creates_parent_account(self, verify):
+        verify.return_value = self._claims()
+        resp = self.client.post(reverse("google_login"), {"credential": "tok"})
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.data)
+        self.assertIn("access", resp.data)
+        self.assertIn("refresh", resp.data)
+
+        user = User.objects.get(google_sub="google-sub-1")
+        self.assertEqual(user.role, User.PARENT)
+        self.assertEqual(user.email, "newparent@example.com")
+        self.assertEqual(user.first_name, "Nina")
+        self.assertEqual(user.last_name, "Newparent")
+        self.assertFalse(user.has_usable_password())
+        self.assertTrue(Account.objects.filter(owner=user).exists())
+
+    @patch("apps.users.services.google_id_token.verify_oauth2_token")
+    def test_new_parent_can_then_add_a_child(self, verify):
+        """Confirms Google sign-up produces an ordinary parent account: the
+        existing child-creation flow works immediately, no special-casing
+        needed downstream of GoogleAuthService."""
+        verify.return_value = self._claims()
+        resp = self.client.post(reverse("google_login"), {"credential": "tok"})
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {resp.data['access']}")
+        child_resp = self.client.post(reverse("users-list"), {
+            "username": "kid", "password": "pw12345678", "role": User.CHILD,
+        })
+        self.assertEqual(child_resp.status_code, status.HTTP_201_CREATED, child_resp.data)
+        parent = User.objects.get(google_sub="google-sub-1")
+        self.assertTrue(Guardianship.objects.filter(parent=parent, child__username="kid").exists())
+
+    @patch("apps.users.services.google_id_token.verify_oauth2_token")
+    def test_repeat_sign_in_reuses_the_same_account(self, verify):
+        verify.return_value = self._claims()
+        first = self.client.post(reverse("google_login"), {"credential": "tok1"})
+        second = self.client.post(reverse("google_login"), {"credential": "tok2"})
+        self.assertEqual(first.status_code, status.HTTP_200_OK)
+        self.assertEqual(second.status_code, status.HTTP_200_OK)
+        self.assertEqual(User.objects.filter(google_sub="google-sub-1").count(), 1)
+
+    @patch("apps.users.services.google_id_token.verify_oauth2_token")
+    def test_verified_email_links_existing_password_account_instead_of_duplicating(self, verify):
+        existing = User.objects.create_user(
+            username="already", password="pw12345678", role=User.PARENT, email="newparent@example.com",
+        )
+        verify.return_value = self._claims()
+        resp = self.client.post(reverse("google_login"), {"credential": "tok"})
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.data)
+        existing.refresh_from_db()
+        self.assertEqual(existing.google_sub, "google-sub-1")
+        self.assertEqual(User.objects.filter(email__iexact="newparent@example.com").count(), 1)
+        # The linked account keeps its original password -- Google sign-in
+        # augments it, it doesn't disable the existing login method.
+        self.assertTrue(existing.check_password("pw12345678"))
+
+    @patch("apps.users.services.google_id_token.verify_oauth2_token")
+    def test_unverified_email_does_not_link_to_an_existing_account(self, verify):
+        User.objects.create_user(
+            username="already", password="pw12345678", role=User.PARENT, email="newparent@example.com",
+        )
+        verify.return_value = self._claims(email_verified=False)
+        resp = self.client.post(reverse("google_login"), {"credential": "tok"})
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.data)
+        new_user = User.objects.get(google_sub="google-sub-1")
+        self.assertNotEqual(new_user.id, User.objects.get(username="already").id)
+
+    @patch("apps.users.services.google_id_token.verify_oauth2_token")
+    def test_username_collision_gets_a_unique_suffix(self, verify):
+        User.objects.create_user(username="newparent", password="pw12345678", role=User.PARENT)
+        verify.return_value = self._claims()
+        resp = self.client.post(reverse("google_login"), {"credential": "tok"})
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.data)
+        new_user = User.objects.get(google_sub="google-sub-1")
+        self.assertNotEqual(new_user.username, "newparent")
+        self.assertTrue(new_user.username.startswith("newparent"))

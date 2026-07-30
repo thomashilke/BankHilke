@@ -154,6 +154,14 @@ REST_FRAMEWORK = {
     ),
 }
 
+# OAuth client id from Google Cloud Console (APIs & Services -> Credentials)
+# for "Sign in with Google" -- see apps.users.services.GoogleAuthService and
+# apps.users.views.GoogleLoginView. Must have the frontend's origin(s)
+# listed under "Authorized JavaScript origins". Left blank disables the
+# feature: the frontend's config lookup returns an empty client_id and
+# hides the Google button rather than rendering a broken one.
+GOOGLE_OAUTH_CLIENT_ID = os.getenv("GOOGLE_OAUTH_CLIENT_ID", "")
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/

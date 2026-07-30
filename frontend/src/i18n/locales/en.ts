@@ -74,6 +74,9 @@ const en = {
     genericError: "Sign in failed.",
     invalidCredentials: "Invalid username or password.",
     profileLoadFailed: "Signed in, but could not load your profile.",
+    orDivider: "or",
+    googleCta: "New here? Continue with Google to create your parent account.",
+    googleError: "Could not sign in with Google. Please try again.",
     footnote: "Parent and child accounts share this sign-in page \u2014 access is scoped by role.",
   },
   child: {

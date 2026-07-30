@@ -38,14 +38,22 @@ to a differently-originated backend).
 ## Structure
 
 - `src/auth/` — `AuthProvider`/`useAuth` (JWT storage + profile loading from
-  the token's `user_id` claim) and `ProtectedRoute` (auth + role gating).
+  the token's `user_id` claim, plus `loginWithGoogle`) and `ProtectedRoute`
+  (auth + role gating).
 - `src/api/` — `client.ts` (axios instance, refresh interceptor, error
   formatting) and `endpoints.ts` (typed calls mirroring the DRF viewsets).
 - `src/types/api.ts` — TypeScript types mirroring the DRF serializers.
-- `src/lib/` — formatting helpers and a client-side mirror of
-  `backend/apps/allowances/scheduling.py`, used only to project a few future
-  allowance/interest occurrences beyond the single `next_run_at` the API
-  returns (the backend remains the source of truth for what actually posts).
+- `src/lib/` — formatting helpers, a client-side mirror of
+  `backend/apps/allowances/scheduling.py` (used only to project a few
+  future allowance/interest occurrences beyond the single `next_run_at`
+  the API returns; the backend remains the source of truth for what
+  actually posts), and `google-identity.d.ts` (ambient types for the
+  Google Identity Services script).
+- `src/components/GoogleSignInButton.tsx` — renders Google's own "Sign in
+  with Google" button (loaded from `accounts.google.com/gsi/client`) once
+  `GET /auth/google/` reports a configured client id; renders nothing
+  otherwise. Used on `src/pages/LoginPage.tsx`, the front-page entrypoint
+  for both signing in and creating a new parent account via Google.
 - `src/pages/child/` — balance, transaction history, upcoming events
   (read-only; children cannot initiate transactions).
 - `src/pages/parent/` — children list, per-child deposit/withdraw, allowance

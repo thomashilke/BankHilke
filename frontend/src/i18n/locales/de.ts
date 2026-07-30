@@ -73,6 +73,9 @@ const de: Translation = {
     genericError: "Anmeldung fehlgeschlagen.",
     invalidCredentials: "Ung\u00fcltiger Benutzername oder ung\u00fcltiges Passwort.",
     profileLoadFailed: "Angemeldet, aber Ihr Profil konnte nicht geladen werden.",
+    orDivider: "oder",
+    googleCta: "Neu hier? Mit Google fortfahren, um Ihr Elternkonto zu erstellen.",
+    googleError: "Anmeldung mit Google fehlgeschlagen. Bitte versuchen Sie es erneut.",
     footnote:
       "Eltern- und Kinderkonten teilen sich diese Anmeldeseite \u2014 der Zugriff richtet sich nach der Rolle.",
   },

@@ -1,13 +1,17 @@
+from django.conf import settings
 from django.db.models import Q
-from rest_framework import permissions
+from rest_framework import permissions, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from api.permissions import IsAdminParent, IsParent
 from apps.users.models import Guardianship, User
 from apps.users.serializers import ChangePasswordSerializer, GuardianshipSerializer, UserSerializer
+from apps.users.services import GoogleAuthService, InvalidGoogleTokenError
 
 
 class IsSelfOrGuardianParent(permissions.BasePermission):
@@ -128,3 +132,33 @@ class GuardianshipViewSet(ModelViewSet):
             raise ValidationError({"detail": f"{target_parent.username} is already a guardian of this child"})
 
         serializer.save(parent=target_parent)
+
+
+class GoogleLoginView(APIView):
+    """Exchange a Google Identity Services credential for this app's own
+    JWT pair -- the front-page "Sign in with Google" entrypoint. AllowAny:
+    this *is* the sign-up flow (a first-time Google identity gets a new
+    parent account, see GoogleAuthService), mirroring UserViewSet.create's
+    open parent self-registration.
+    """
+
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        """Public config the frontend needs to render Google's button --
+        not a secret, this is the OAuth client id Google itself shows on
+        the consent screen. Empty when Google sign-in isn't configured, so
+        the frontend can hide the button instead of rendering a broken
+        one."""
+        return Response({"client_id": settings.GOOGLE_OAUTH_CLIENT_ID})
+
+    def post(self, request):
+        credential = request.data.get("credential")
+        if not credential:
+            raise ValidationError({"credential": ["This field is required."]})
+        try:
+            user = GoogleAuthService.authenticate(credential)
+        except InvalidGoogleTokenError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        refresh = RefreshToken.for_user(user)
+        return Response({"access": str(refresh.access_token), "refresh": str(refresh)})

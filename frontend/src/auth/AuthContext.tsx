@@ -63,6 +63,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [t],
   );
 
+  const loginWithGoogle = useCallback(
+    async (credential: string) => {
+      let tokens;
+      try {
+        tokens = await authApi.google(credential);
+      } catch (error) {
+        throw new Error(apiErrorMessage(error, t("login.googleError")));
+      }
+      tokenStore.set(tokens);
+      const loaded = await loadUserFromToken();
+      if (!loaded) throw new Error(t("login.profileLoadFailed"));
+      setUser(loaded);
+      setStatus("authenticated");
+    },
+    [t],
+  );
+
   const logout = useCallback(() => {
     tokenStore.clear();
     setUser(null);
@@ -81,8 +98,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ user, status, login, logout, updateLanguage }),
-    [user, status, login, logout, updateLanguage],
+    () => ({ user, status, login, loginWithGoogle, logout, updateLanguage }),
+    [user, status, login, loginWithGoogle, logout, updateLanguage],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

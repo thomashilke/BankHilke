@@ -22,11 +22,17 @@ role-gated parent/child dashboards consuming this API; see
   `celery.py`, `asgi.py`, `wsgi.py`). The Celery app is `api.celery.app`,
   exported as `celery_app` from `backend/api/__init__.py` (`celery -A api ...`).
 - Four Django apps under `backend/apps/`:
-  - **`users`** — `User(AbstractUser)` with `role` (`User.PARENT`/`User.CHILD`)
-    and a `pin` field (reserved, not used by the API yet). `Guardianship`
-    links a parent to a child they're financially responsible for; a child
-    can have **multiple** guardians (e.g. divorced parents), which is what
-    makes per-parent reconciliation possible.
+  - **`users`** — `User(AbstractUser)` with `role` (`User.PARENT`/`User.CHILD`),
+    a `pin` field (reserved, not used by the API yet), and `google_sub`
+    (nullable, unique -- set once an account signs in via "Sign in with
+    Google"). `services.GoogleAuthService` verifies a Google Identity
+    Services credential and resolves it to a User, creating a new parent
+    account on first sign-in (this doubles as account creation: there's no
+    separate signup step) or linking it to an existing account by
+    Google-verified email. `Guardianship` links a parent to a child
+    they're financially responsible for; a child can have **multiple**
+    guardians (e.g. divorced parents), which is what makes per-parent
+    reconciliation possible.
   - **`accounts`** — `Account` (`OneToOneField` to `User`), auto-created for
     every new `User` via a `post_save` signal (`apps/accounts/signals.py`).
     `Account.balance` is a `@property` computed on read: sum of `credit`
@@ -35,16 +41,23 @@ role-gated parent/child dashboards consuming this API; see
   - **`transactions`** — the ledger core:
     - `Transaction` — one row per business event (`allowance` / `interest` /
       `withdrawal` / `deposit`), recording `child_account`, `parent_account`,
-      `amount`, `initiated_by` (null for scheduled events), and a unique
-      `idempotency_key`.
+      `amount`, `initiated_by` (null for scheduled events), a unique
+      `idempotency_key`, and an optional `reverses` (self `OneToOneField`)
+      pointing at the transaction it cancels out, if any.
+      `Transaction.objects.visible()` excludes both legs of a reversal pair
+      (the reversed original and its reversal) from every listing/aggregate
+      -- reversing a movement is meant to make it as if it never happened.
     - `LedgerEntry` — exactly two rows per `Transaction` (one `debit`, one
       `credit`, equal `amount`), each pointing at an `Account`.
     - `services.LedgerService` — the **only** way transactions get posted
-      (`allowance`, `interest`, `deposit`, `withdrawal` static methods).
-      Allowance/interest/deposit debit the parent and credit the child;
-      withdrawal debits the child and credits the advancing parent.
-      `withdrawal` locks the child's row (`select_for_update`) and rejects
-      amounts exceeding the current balance (`InsufficientFundsError`).
+      (`allowance`, `interest`, `deposit`, `withdrawal`, `reverse` static
+      methods). Allowance/interest/deposit debit the parent and credit the
+      child; withdrawal debits the child and credits the advancing parent;
+      `reverse` posts a new transaction with the same debit/credit legs
+      swapped (parent-only, via `POST /transactions/{id}/reverse/`), then
+      relies on `visible()` to hide the pair. `withdrawal`/`reverse` each
+      lock the affected row (`select_for_update`) and reject amounts that
+      would take a balance negative (`InsufficientFundsError`).
       Every posting is idempotent: a repeated `idempotency_key` returns the
       already-posted `Transaction` instead of creating a duplicate (relies on
       the DB unique constraint + catching `IntegrityError`).
@@ -76,7 +89,7 @@ role-gated parent/child dashboards consuming this API; see
 - `backend/api/` — Django project config, URL routing, Celery app, shared DRF
   permission classes (`api/permissions.py`).
 - `backend/apps/users/` — `User`, `Guardianship`, registration + guardianship
-  API.
+  API, `services.GoogleAuthService` ("Sign in with Google").
 - `backend/apps/accounts/` — `Account`, balance/history/reconciliation API.
 - `backend/apps/transactions/` — `Transaction`, `LedgerEntry`,
   `LedgerService`, deposit/withdraw API.
@@ -172,9 +185,11 @@ has no config driving it).
   new `User`.
 - `backend/requirements.txt` — Django 6.0.5, DRF 3.17.1,
   `djangorestframework_simplejwt`, Celery 5.6.3 + `redis`, `psycopg` 3,
-  `django-guardian`, `django-filter`, `django-cors-headers`.
-- `backend/.env` — `DEBUG`, `SECRET_KEY`, `POSTGRES_*`. Not gitignored —
-  don't put real secrets in it.
+  `django-guardian`, `django-filter`, `django-cors-headers`, `google-auth`
+  (Google ID token verification for "Sign in with Google").
+- `backend/.env` — `DEBUG`, `SECRET_KEY`, `POSTGRES_*`,
+  `GOOGLE_OAUTH_CLIENT_ID` (optional). Not gitignored — don't put real
+  secrets in it.
 
 ## Runtime/Tooling Preferences
 
@@ -187,7 +202,7 @@ has no config driving it).
   service by default — see `CELERY_BROKER_URL`/`CELERY_RESULT_BACKEND` in
   `settings.py`).
 
-## API Surface (all under `/api/`, JWT auth via `/api/auth/{login,refresh,verify}/`)
+## API Surface (all under `/api/`, JWT auth via `/api/auth/{login,refresh,verify}/`, plus Google via `/api/auth/google/`)
 
 - `POST /users/` — register. `role=parent` is open (`AllowAny`); `role=child`
   requires an authenticated parent, who becomes the child's first guardian.
@@ -200,10 +215,19 @@ has no config driving it).
 - `GET /accounts/{id}/history/` — paginated transaction history.
 - `GET /accounts/{id}/reconciliation/` — child accounts only: per-guardian
   totals given/taken/net.
-- `GET /transactions/` — history scoped to the caller.
+- `GET /transactions/` — history scoped to the caller (excludes reversed
+  transactions and reversals themselves, see `Transaction.objects.visible()`).
 - `POST /transactions/deposit/`, `POST /transactions/withdraw/` — parent-only,
   requires the caller to be a guardian of `child_account`'s owner; withdrawal
   rejects amounts exceeding the current balance.
+- `POST /transactions/{id}/reverse/` — parent-only, guardian-scoped; posts an
+  offsetting transaction and hides both from every listing/aggregate.
+- `GET /auth/google/` — public config (`{client_id}`) the frontend needs to
+  render Google's button; empty when unconfigured.
+- `POST /auth/google/` — exchange a Google credential for this app's JWT
+  pair, creating a new parent account on first sign-in (or linking to an
+  existing account by Google-verified email) — the front-page account
+  creation entrypoint.
 - `GET/POST/PATCH /allowance-rules/`, `/interest-rules/` — guardian-only
   writes, `funding_parent` must itself be a guardian of `child`; children get
   read-only access to their own rule(s).
@@ -211,13 +235,14 @@ has no config driving it).
 ## Testing & QA
 
 Django's built-in test runner (`python manage.py test`) — no pytest, no CI
-configured. 34 tests across the four apps:
+configured. 98 tests across the four apps:
 
 - `apps/transactions/tests.py` — `LedgerService` double-entry correctness
   (offsetting debit/credit, balance = allowances + interest + deposits −
-  withdrawals), insufficient-funds rejection, idempotent replay, and
-  deposit/withdraw API permission boundaries (parent-only, guardian-only,
-  history scoping).
+  withdrawals), insufficient-funds rejection, idempotent replay, transaction
+  reversal (offsetting entries, hidden from listings, idempotent), and
+  deposit/withdraw/reverse API permission boundaries (parent-only,
+  guardian-only, history scoping).
 - `apps/allowances/tests.py` — scheduling helper correctness (weekly wrap,
   monthly short-month clamping), `process_due_accruals` posting + cursor
   advance, **idempotent rerun** (no double-post), **downtime catch-up**
@@ -225,11 +250,13 @@ configured. 34 tests across the four apps:
   accrual amount, and rule-config API permissions (guardian-only writes,
   `funding_parent` must be a guardian).
 - `apps/users/tests.py` — self-registration (parent, open) vs. gated child
-  creation (parent-only, auto-guardianship), password hashing/login,
-  guardianship linking.
+  creation (parent-only, auto-guardianship), password hashing/login, Google
+  sign-in (new-account creation, repeat sign-in reuses the account,
+  verified-email linking to an existing account, unique username
+  generation), guardianship linking.
 - `apps/accounts/tests.py` — visibility scoping (child sees only self, parent
   sees self + guarded children, unrelated parent sees neither), balance,
-  history, and reconciliation correctness.
+  history (excludes reversed transactions), and reconciliation correctness.
 
 Run inside the backend container: `docker compose -f
 docker-compose.backend-test.yml exec backend python manage.py test`. `apps`
