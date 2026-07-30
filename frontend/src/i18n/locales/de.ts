@@ -198,6 +198,11 @@ const de: Translation = {
     typeCol: "Typ",
     descriptionCol: "Beschreibung",
     amountCol: "Betrag",
+    actionsCol: "Aktionen",
+    reverseButton: "R\u00fcckg\u00e4ngig",
+    reversing: "Wird r\u00fcckg\u00e4ngig gemacht\u2026",
+    reverseConfirm: "Diese Transaktion r\u00fcckg\u00e4ngig machen? Es wird ein Ausgleichseintrag gebucht und beide verschwinden aus dem Verlauf.",
+    reverseError: "Diese Transaktion konnte nicht r\u00fcckg\u00e4ngig gemacht werden. Bitte versuchen Sie es erneut.",
   },
   upcoming: {
     title: "Bevorstehende Ereignisse",

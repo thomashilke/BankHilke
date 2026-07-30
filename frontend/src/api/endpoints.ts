@@ -62,6 +62,8 @@ export const transactionsApi = {
     api.post<Transaction>("/transactions/deposit/", payload).then((r) => r.data),
   withdraw: (payload: ManualTransactionInput) =>
     api.post<Transaction>("/transactions/withdraw/", payload).then((r) => r.data),
+  reverse: (transactionId: number) =>
+    api.post<Transaction>(`/transactions/${transactionId}/reverse/`).then((r) => r.data),
 };
 
 export const allowanceRulesApi = {

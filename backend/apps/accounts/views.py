@@ -34,7 +34,7 @@ class AccountViewSet(ReadOnlyModelViewSet):
     def history(self, request, pk=None):
         """Past transactions this account was on either side of, newest first."""
         account = self.get_object()
-        qs = Transaction.objects.filter(
+        qs = Transaction.objects.visible().filter(
             Q(child_account=account) | Q(parent_account=account)
         ).select_related("child_account__owner", "parent_account__owner").order_by("-created_at")
         page = self.paginate_queryset(qs)
@@ -68,7 +68,7 @@ class AccountViewSet(ReadOnlyModelViewSet):
                 status=400,
             )
         rows = (
-            Transaction.objects.filter(child_account=account)
+            Transaction.objects.visible().filter(child_account=account)
             .values("parent_account__owner_id", "parent_account__owner__username")
             .annotate(
                 total_given=Sum(

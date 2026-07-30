@@ -75,6 +75,29 @@ class AccountAPITests(APITestCase):
         self.assertEqual(Decimal(by_parent["dad"]["total_taken"]), Decimal("2.00"))
         self.assertEqual(Decimal(by_parent["dad"]["net_contribution"]), Decimal("3.00"))
 
+    def test_reversed_transaction_hidden_from_history_and_reconciliation(self):
+        allowance = LedgerService.allowance(
+            child_account=self.child.account, parent_account=self.mom.account,
+            amount=Decimal("10.00"), description="allowance", idempotency_key="a:1",
+        )
+        LedgerService.deposit(
+            child_account=self.child.account, parent_account=self.dad.account,
+            amount=Decimal("5.00"), description="gift", initiated_by=self.dad,
+        )
+        LedgerService.reverse(transaction=allowance, initiated_by=self.mom)
+
+        self.client.force_authenticate(user=self.child)
+        history = self.client.get(reverse("accounts-history", args=[self.child.account.id]))
+        self.assertEqual(history.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(history.data), 1)
+        self.assertEqual(history.data[0]["description"], "gift")
+
+        self.client.force_authenticate(user=self.mom)
+        recon = self.client.get(reverse("accounts-reconciliation", args=[self.child.account.id]))
+        by_parent = {row["parent_username"]: row for row in recon.data}
+        self.assertNotIn("mom", by_parent)
+        self.assertEqual(Decimal(by_parent["dad"]["total_given"]), Decimal("5.00"))
+
     def test_currency_defaults_to_usd_and_is_exposed_on_account(self):
         self.client.force_authenticate(user=self.child)
         resp = self.client.get(reverse("accounts-detail", args=[self.child.account.id]))

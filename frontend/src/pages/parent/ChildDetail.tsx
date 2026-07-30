@@ -7,6 +7,7 @@ import {
   allowanceRulesApi,
   guardianshipsApi,
   interestRulesApi,
+  transactionsApi,
   usersApi,
 } from "../../api/endpoints";
 import { apiErrorMessage } from "../../api/client";
@@ -99,6 +100,11 @@ export function ChildDetail() {
     } finally {
       setCurrencySaving(false);
     }
+  }
+
+  async function handleReverseTransaction(transactionId: number) {
+    await transactionsApi.reverse(transactionId);
+    await load();
   }
 
   useEffect(() => {
@@ -213,7 +219,12 @@ export function ChildDetail() {
               </div>
 
               <div className="lg:col-span-3">
-                <TransactionTable transactions={state.transactions} perspectiveAccountId={state.account.id} currency={state.account.currency} />
+                <TransactionTable
+                  transactions={state.transactions}
+                  perspectiveAccountId={state.account.id}
+                  currency={state.account.currency}
+                  onReverse={handleReverseTransaction}
+                />
               </div>
             </div>
           </>

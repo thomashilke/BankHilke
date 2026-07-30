@@ -198,6 +198,11 @@ const en = {
     typeCol: "Type",
     descriptionCol: "Description",
     amountCol: "Amount",
+    actionsCol: "Actions",
+    reverseButton: "Reverse",
+    reversing: "Reversing\u2026",
+    reverseConfirm: "Reverse this transaction? This posts an offsetting entry and removes both from the history.",
+    reverseError: "Could not reverse this transaction. Please try again.",
   },
   upcoming: {
     title: "Upcoming events",

@@ -147,3 +147,61 @@ class LedgerService:
             return txn
         except IntegrityError:
             return Transaction.objects.get(idempotency_key=idempotency_key)
+
+    @staticmethod
+    def reverse(*, transaction, initiated_by):
+        """Posts a reversal transaction that exactly undoes `transaction`'s
+        ledger effect: same amount, debit/credit legs swapped. The original
+        and its reversal are then excluded from every listing and
+        aggregate (see Transaction.objects.visible()) -- reversing a
+        movement is meant to make it as if it never happened.
+
+        Idempotent: replaying against an already-reversed transaction
+        returns the existing reversal instead of creating a second one
+        (also enforced at the DB level by the unique `reverses` column and
+        the deterministic idempotency key, for concurrent callers).
+        """
+        if transaction.reverses_id is not None:
+            raise ValueError("cannot reverse a reversal transaction")
+        if hasattr(transaction, "reversal"):
+            return transaction.reversal
+
+        debit_entry = transaction.entries.get(direction=LedgerEntry.DEBIT)
+        credit_entry = transaction.entries.get(direction=LedgerEntry.CREDIT)
+        # Swap the legs: whatever was credited is now debited, and vice versa.
+        new_debit_account_id = credit_entry.account_id
+        new_credit_account_id = debit_entry.account_id
+        idempotency_key = f"reversal:{transaction.id}"
+
+        try:
+            with db_transaction.atomic():
+                new_debit_account = Account.objects.select_for_update().get(pk=new_debit_account_id)
+                if new_debit_account_id == transaction.child_account_id and transaction.amount > new_debit_account.balance:
+                    raise InsufficientFundsError("reversal would take the child account balance negative")
+
+                reversal = Transaction.objects.create(
+                    transaction_type=transaction.transaction_type,
+                    child_account=transaction.child_account,
+                    parent_account=transaction.parent_account,
+                    amount=transaction.amount,
+                    description=f"Reversal of #{transaction.id}",
+                    initiated_by=initiated_by,
+                    idempotency_key=idempotency_key,
+                    reverses=transaction,
+                )
+                LedgerEntry.objects.create(
+                    transaction=reversal,
+                    account_id=new_debit_account_id,
+                    direction=LedgerEntry.DEBIT,
+                    amount=transaction.amount,
+                )
+                LedgerEntry.objects.create(
+                    transaction=reversal,
+                    account_id=new_credit_account_id,
+                    direction=LedgerEntry.CREDIT,
+                    amount=transaction.amount,
+                )
+            return reversal
+        except IntegrityError:
+            transaction.refresh_from_db()
+            return transaction.reversal

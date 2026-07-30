@@ -198,6 +198,11 @@ const fr: Translation = {
     typeCol: "Type",
     descriptionCol: "Description",
     amountCol: "Montant",
+    actionsCol: "Actions",
+    reverseButton: "Annuler",
+    reversing: "Annulation\u2026",
+    reverseConfirm: "Annuler cette transaction\u00a0? Une \u00e9criture compensatoire sera publi\u00e9e et les deux disparaissent de l'historique.",
+    reverseError: "Impossible d'annuler cette transaction. Veuillez r\u00e9essayer.",
   },
   upcoming: {
     title: "\u00c9v\u00e9nements \u00e0 venir",

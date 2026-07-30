@@ -26,10 +26,25 @@ class TransactionViewSet(ReadOnlyModelViewSet):
         user = self.request.user
         if user.role == User.PARENT:
             child_ids = Guardianship.objects.filter(parent=user).values_list("child_id", flat=True)
-            return Transaction.objects.filter(
+            qs = Transaction.objects.filter(
                 Q(parent_account__owner=user) | Q(child_account__owner_id__in=child_ids)
             ).distinct()
-        return Transaction.objects.filter(child_account__owner=user)
+        else:
+            qs = Transaction.objects.filter(child_account__owner=user)
+        return qs.visible()
+
+    @action(detail=True, methods=["post"], permission_classes=[permissions.IsAuthenticated, IsParent])
+    def reverse(self, request, pk=None):
+        """Reverses this transaction's ledger effect. `get_object` (scoped
+        by `get_queryset`) already guarantees the caller is a guardian of
+        the child on this transaction and that it hasn't been reversed
+        already -- both are required for it to be visible/reachable here."""
+        txn = self.get_object()
+        try:
+            reversal = LedgerService.reverse(transaction=txn, initiated_by=request.user)
+        except InsufficientFundsError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(TransactionSerializer(reversal).data, status=status.HTTP_201_CREATED)
 
     @action(detail=False, methods=["post"], permission_classes=[permissions.IsAuthenticated, IsParent])
     def deposit(self, request):

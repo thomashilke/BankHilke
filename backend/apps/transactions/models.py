@@ -4,6 +4,15 @@ from apps.accounts.models import Account
 from apps.users.models import User
 
 
+class TransactionQuerySet(models.QuerySet):
+    def visible(self):
+        """Excludes reversal transactions and transactions that have been
+        reversed. Reversing a movement is meant to make it as if it never
+        happened, so both legs of a reversal disappear from every listing
+        and aggregate built on this queryset."""
+        return self.filter(reverses__isnull=True, reversal__isnull=True)
+
+
 class Transaction(models.Model):
     """A single business event (allowance, interest, deposit, withdrawal).
 
@@ -23,6 +32,8 @@ class Transaction(models.Model):
         (WITHDRAWAL, "Withdrawal"),
         (DEPOSIT, "Deposit"),
     ]
+
+    objects = TransactionQuerySet.as_manager()
 
     transaction_type = models.CharField(
         max_length=20,
@@ -64,6 +75,16 @@ class Transaction(models.Model):
         max_length=255,
         unique=True,
         help_text="Deterministic for scheduled events (rule id + due timestamp) so replays/catch-up never double-post.",
+    )
+
+    reverses = models.OneToOneField(
+        "self",
+        null=True,
+        blank=True,
+        related_name="reversal",
+        on_delete=models.CASCADE,
+        help_text="Set on a reversal transaction; points at the original transaction it cancels out. "
+        "Once a transaction has a reversal, `objects.visible()` excludes both from listings/aggregates.",
     )
 
     created_at = models.DateTimeField(auto_now_add=True)

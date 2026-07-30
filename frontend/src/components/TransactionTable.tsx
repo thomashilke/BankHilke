@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Currency, Transaction } from "../types/api";
 import { formatCurrency, formatDateTime } from "../lib/format";
-import { Card, CardHeader, EmptyState, TransactionTypeBadge } from "./ui";
+import { apiErrorMessage } from "../api/client";
+import { Card, CardHeader, EmptyState, SecondaryButton, TransactionTypeBadge } from "./ui";
 
 const IS_CREDIT_TYPE: Record<string, boolean> = { allowance: true, interest: true, deposit: true, withdrawal: false };
 
@@ -14,14 +16,41 @@ export function TransactionTable({
   currency,
   title,
   subtitle,
+  onReverse,
 }: {
   transactions: Transaction[];
   perspectiveAccountId: number;
   currency: Currency;
   title?: string;
   subtitle?: string;
+  /** Present only on parent-facing views: reverses transaction `id`
+   * (posts an offsetting entry, then hides both from every listing) and
+   * refreshes the caller's data. Omit to hide the action entirely. */
+  onReverse?: (id: number) => Promise<void>;
 }) {
   const { t } = useTranslation();
+  const [reversingId, setReversingId] = useState<number | null>(null);
+  const [rowErrors, setRowErrors] = useState<Record<number, string>>({});
+
+  async function handleReverse(id: number) {
+    if (!onReverse || reversingId !== null) return;
+    if (!window.confirm(t("transactions.reverseConfirm"))) return;
+    setReversingId(id);
+    setRowErrors((prev) => {
+      if (!(id in prev)) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    try {
+      await onReverse(id);
+    } catch (err) {
+      setRowErrors((prev) => ({ ...prev, [id]: apiErrorMessage(err, t("transactions.reverseError")) }));
+    } finally {
+      setReversingId(null);
+    }
+  }
+
   return (
     <Card>
       <CardHeader title={title ?? t("transactions.defaultTitle")} subtitle={subtitle} />
@@ -36,6 +65,7 @@ export function TransactionTable({
                 <th className="px-5 py-2.5 font-medium">{t("transactions.typeCol")}</th>
                 <th className="px-5 py-2.5 font-medium">{t("transactions.descriptionCol")}</th>
                 <th className="px-5 py-2.5 text-right font-medium">{t("transactions.amountCol")}</th>
+                {onReverse && <th className="px-5 py-2.5 text-right font-medium">{t("transactions.actionsCol")}</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-ink-100">
@@ -56,6 +86,18 @@ export function TransactionTable({
                       {isCredit ? "+" : "\u2212"}
                       {formatCurrency(txn.amount, currency)}
                     </td>
+                    {onReverse && (
+                      <td className="whitespace-nowrap px-5 py-3 text-right">
+                        <SecondaryButton
+                          className="px-2.5 py-1 text-xs"
+                          disabled={reversingId !== null}
+                          onClick={() => handleReverse(txn.id)}
+                        >
+                          {reversingId === txn.id ? t("transactions.reversing") : t("transactions.reverseButton")}
+                        </SecondaryButton>
+                        {rowErrors[txn.id] && <p className="mt-1 max-w-xs text-xs text-red-600">{rowErrors[txn.id]}</p>}
+                      </td>
+                    )}
                   </tr>
                 );
               })}
