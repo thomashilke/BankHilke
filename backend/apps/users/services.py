@@ -6,7 +6,7 @@ from django.db import transaction as db_transaction
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token as google_id_token
 
-from .models import User
+from .models import Guardianship, User
 
 
 class InvalidGoogleTokenError(Exception):
@@ -94,3 +94,38 @@ class GoogleAuthService:
             username = f"{base}{suffix}"[:150]
             suffix += 1
         return username
+
+
+class AccountDeletionService:
+    """Deletes a user account -- the only destructive operation this API
+    exposes (see UserViewSet.perform_destroy / CanDeleteAccount). Called
+    either for self-service (a parent deleting their own account -- never a
+    child, who can't delete any account) or for a parent deleting a child
+    account they created, straight from the Settings page danger zone. A
+    guardian who didn't create the child can only unlink themselves (see
+    GuardianshipViewSet), never call this on the child directly.
+
+    Deleting a User cascades (via each model's `on_delete=models.CASCADE`)
+    onto everything that belongs to *that* account: its Account, ledger
+    history on either side of any transaction it participated in, and its
+    own allowance/interest rules and guardianship links. What the ORM's
+    cascade can't express is the business rule that a child with no
+    guardian left is nobody's responsibility: when the deleted user is a
+    parent, any child whose *only* guardian was this parent is deleted
+    too, in the same atomic transaction.
+    """
+
+    @staticmethod
+    def delete_user(user):
+        with db_transaction.atomic():
+            orphaned_child_ids = []
+            if user.role == User.PARENT:
+                guarded_child_ids = Guardianship.objects.filter(parent=user).values_list("child_id", flat=True)
+                orphaned_child_ids = [
+                    child_id
+                    for child_id in guarded_child_ids
+                    if not Guardianship.objects.filter(child_id=child_id).exclude(parent=user).exists()
+                ]
+            user.delete()
+            if orphaned_child_ids:
+                User.objects.filter(id__in=orphaned_child_ids).delete()

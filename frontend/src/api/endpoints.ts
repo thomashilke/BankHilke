@@ -35,12 +35,11 @@ export const usersApi = {
     last_name?: string;
     currency?: Currency;
   }) => api.post<User>("/users/", { ...payload, role: "child" }).then((r) => r.data),
-  registerParent: (payload: { username: string; password: string; email?: string; first_name?: string; last_name?: string }) =>
-    api.post<User>("/users/", { ...payload, role: "parent" }).then((r) => r.data),
   update: (userId: number, payload: { language: Language }) =>
     api.patch<User>(`/users/${userId}/`, payload).then((r) => r.data),
   changePassword: (payload: { current_password: string; new_password: string }) =>
     api.post<{ detail: string }>("/users/change-password/", payload).then((r) => r.data),
+  deleteAccount: (userId: number) => api.delete<void>(`/users/${userId}/`).then(() => undefined),
 };
 
 export const guardianshipsApi = {
@@ -48,6 +47,7 @@ export const guardianshipsApi = {
   listForChild: (childId: number) =>
     api.get<Guardianship[]>("/guardianships/", { params: { child: childId } }).then((r) => r.data),
   create: (payload: LinkGuardianInput) => api.post<Guardianship>("/guardianships/", payload).then((r) => r.data),
+  remove: (guardianshipId: number) => api.delete<void>(`/guardianships/${guardianshipId}/`).then(() => undefined),
 };
 
 export const accountsApi = {

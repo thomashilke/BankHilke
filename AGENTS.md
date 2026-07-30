@@ -29,10 +29,25 @@ role-gated parent/child dashboards consuming this API; see
     Services credential and resolves it to a User, creating a new parent
     account on first sign-in (this doubles as account creation: there's no
     separate signup step) or linking it to an existing account by
-    Google-verified email. `Guardianship` links a parent to a child
-    they're financially responsible for; a child can have **multiple**
-    guardians (e.g. divorced parents), which is what makes per-parent
-    reconciliation possible.
+    Google-verified email; a Google-only account never gets a usable
+    password (`set_unusable_password`), which is what `UserSerializer`'s
+    `has_usable_password` field lets the frontend key off to hide the
+    "change password" control for those accounts. `Guardianship` links a
+    parent to a child they're financially responsible for; a child can
+    have **multiple** guardians (e.g. divorced parents), which is what
+    makes per-parent reconciliation possible. Exactly one guardian per
+    child is flagged `is_creator=True` -- the parent who registered the
+    child's account via `POST /users/` (see `UserViewSet.perform_create`).
+    `services.AccountDeletionService` backs the only destructive operation
+    the API exposes, `DELETE /users/{id}/` (see `CanDeleteAccount`): a
+    parent may delete their own account, or a child's account only if they
+    created it; a child can never delete any account (their own included),
+    and a non-creating guardian can only unlink themselves via
+    `DELETE /guardianships/{id}/`, never delete the child outright.
+    Deleting a user cascades onto everything owned by that account via each
+    model's `on_delete=models.CASCADE`, and when the deleted user is a
+    parent, any child left with no remaining guardian is deleted too, in
+    the same atomic transaction.
   - **`accounts`** — `Account` (`OneToOneField` to `User`), auto-created for
     every new `User` via a `post_save` signal (`apps/accounts/signals.py`).
     `Account.balance` is a `@property` computed on read: sum of `credit`
@@ -206,9 +221,19 @@ has no config driving it).
 
 - `POST /users/` — register. `role=parent` is open (`AllowAny`); `role=child`
   requires an authenticated parent, who becomes the child's first guardian.
-- `GET/PATCH /users/{id}/` — self, or (for a parent) a child they guard.
+- `GET/PATCH /users/{id}/` — self, or (for a parent) a child they guard;
+  includes read-only `has_usable_password` (false for Google-only accounts).
+- `DELETE /users/{id}/` — the only account-destroying operation the API
+  exposes (see `CanDeleteAccount`): a parent may delete their own account,
+  or a child's account they created; a child can never delete any account.
+  Cascades onto everything the account owns, and if the deleted user is a
+  parent, any child left with no remaining guardian is deleted too (see
+  `AccountDeletionService`).
 - `POST /guardianships/` — an authenticated parent links themselves as an
   additional guardian of an existing child (divorced-parents reconciliation).
+- `DELETE /guardianships/{id}/` — a parent unlinks one of their own
+  guardianship links; the only way a non-creating guardian can detach from
+  a child (never deletes the child itself).
 - `GET /accounts/` — accounts visible to the caller (own + guarded children
   for a parent; own only for a child).
 - `GET /accounts/{id}/` — current balance.
@@ -235,7 +260,7 @@ has no config driving it).
 ## Testing & QA
 
 Django's built-in test runner (`python manage.py test`) — no pytest, no CI
-configured. 98 tests across the four apps:
+configured. 111 tests across the four apps:
 
 - `apps/transactions/tests.py` — `LedgerService` double-entry correctness
   (offsetting debit/credit, balance = allowances + interest + deposits −
@@ -250,10 +275,16 @@ configured. 98 tests across the four apps:
   accrual amount, and rule-config API permissions (guardian-only writes,
   `funding_parent` must be a guardian).
 - `apps/users/tests.py` — self-registration (parent, open) vs. gated child
-  creation (parent-only, auto-guardianship), password hashing/login, Google
-  sign-in (new-account creation, repeat sign-in reuses the account,
-  verified-email linking to an existing account, unique username
-  generation), guardianship linking.
+  creation (parent-only, auto-guardianship), password hashing/login,
+  self-service password change (rejected for Google-only accounts, which
+  have no password to change), Google sign-in (new-account creation, repeat
+  sign-in reuses the account, verified-email linking to an existing
+  account, unique username generation), guardianship linking, and
+  account-deletion permission boundaries (a parent may delete their own
+  account or a child's account only if they created it; a child can never
+  delete any account; a non-creating guardian can only unlink themselves),
+  and the cascade onto a sole-guardian child while a co-guardian's own
+  link/data survives.
 - `apps/accounts/tests.py` — visibility scoping (child sees only self, parent
   sees self + guarded children, unrelated parent sees neither), balance,
   history (excludes reversed transactions), and reconciliation correctness.

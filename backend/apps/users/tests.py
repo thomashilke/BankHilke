@@ -1,3 +1,4 @@
+from decimal import Decimal
 from unittest.mock import patch
 
 from django.core.management import call_command
@@ -8,6 +9,9 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from apps.accounts.models import Account
+from apps.allowances.models import AllowanceRule
+from apps.transactions.models import Transaction
+from apps.transactions.services import LedgerService
 
 from .models import Guardianship, User
 
@@ -317,6 +321,40 @@ class ChangePasswordTests(APITestCase):
         })
         self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED)
 
+    def test_password_account_exposes_has_usable_password_true(self):
+        parent = User.objects.create_user(username="parent", password="pw12345678", role=User.PARENT)
+        self.client.force_authenticate(user=parent)
+        resp = self.client.get(reverse("users-detail", args=[parent.id]))
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertTrue(resp.data["has_usable_password"])
+
+    @patch("apps.users.services.google_id_token.verify_oauth2_token")
+    def test_google_only_account_exposes_has_usable_password_false(self, verify):
+        verify.return_value = {
+            "sub": "google-sub-1", "email": "newparent@example.com", "email_verified": True,
+            "given_name": "Nina",
+        }
+        self.client.post(reverse("google_login"), {"credential": "whatever"})
+        google_parent = User.objects.get(google_sub="google-sub-1")
+        self.client.force_authenticate(user=google_parent)
+        resp = self.client.get(reverse("users-detail", args=[google_parent.id]))
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertFalse(resp.data["has_usable_password"])
+
+    @patch("apps.users.services.google_id_token.verify_oauth2_token")
+    def test_google_only_account_cannot_change_password(self, verify):
+        verify.return_value = {
+            "sub": "google-sub-1", "email": "newparent@example.com", "email_verified": True,
+            "given_name": "Nina",
+        }
+        self.client.post(reverse("google_login"), {"credential": "whatever"})
+        google_parent = User.objects.get(google_sub="google-sub-1")
+        self.client.force_authenticate(user=google_parent)
+        resp = self.client.post(reverse("users-change-password"), {
+            "current_password": "", "new_password": "new-password-2",
+        })
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
     def test_changed_password_can_be_used_to_log_in(self):
         User.objects.create_user(username="parent", password="pw12345678", role=User.PARENT)
         parent = User.objects.get(username="parent")
@@ -561,3 +599,148 @@ class GoogleLoginTests(APITestCase):
         new_user = User.objects.get(google_sub="google-sub-1")
         self.assertNotEqual(new_user.username, "newparent")
         self.assertTrue(new_user.username.startswith("newparent"))
+
+
+class AccountDeletionTests(APITestCase):
+    """`DELETE /users/{id}/` -- the only destructive operation this API
+    exposes (see AccountDeletionService / CanDeleteAccount). A parent may
+    delete their own account (cascading onto any child left with no
+    remaining guardian), or a child account they created; a child can
+    never delete any account, and a non-creating guardian can only unlink
+    themselves via GuardianshipViewSet."""
+
+    def test_child_cannot_delete_own_account(self):
+        child = User.objects.create_user(username="kid", password="pw12345678", role=User.CHILD)
+        self.client.force_authenticate(user=child)
+        resp = self.client.delete(reverse("users-detail", args=[child.id]))
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertTrue(User.objects.filter(id=child.id).exists())
+
+    def test_child_cannot_delete_another_childs_account(self):
+        child = User.objects.create_user(username="kid", password="pw12345678", role=User.CHILD)
+        other = User.objects.create_user(username="other-kid", password="pw12345678", role=User.CHILD)
+        self.client.force_authenticate(user=child)
+        resp = self.client.delete(reverse("users-detail", args=[other.id]))
+        self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertTrue(User.objects.filter(id=other.id).exists())
+
+    def test_parent_can_delete_own_account(self):
+        parent = User.objects.create_user(username="parent", password="pw12345678", role=User.PARENT)
+        self.client.force_authenticate(user=parent)
+        resp = self.client.delete(reverse("users-detail", args=[parent.id]))
+        self.assertEqual(resp.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(User.objects.filter(id=parent.id).exists())
+
+    def test_deleting_sole_guardian_deletes_the_child_too(self):
+        parent = User.objects.create_user(username="parent", password="pw12345678", role=User.PARENT)
+        child = User.objects.create_user(username="kid", password="pw12345678", role=User.CHILD)
+        Guardianship.objects.create(parent=parent, child=child, is_creator=True)
+        AllowanceRule.objects.create(
+            child=child, funding_parent=parent, amount=Decimal("5.00"), weekday=0, hour=9,
+        )
+        LedgerService.allowance(
+            child_account=child.account, parent_account=parent.account,
+            amount=Decimal("10.00"), description="allowance", idempotency_key="a:1",
+        )
+
+        self.client.force_authenticate(user=parent)
+        resp = self.client.delete(reverse("users-detail", args=[parent.id]))
+        self.assertEqual(resp.status_code, status.HTTP_204_NO_CONTENT)
+
+        self.assertFalse(User.objects.filter(id=parent.id).exists())
+        self.assertFalse(User.objects.filter(id=child.id).exists())
+        self.assertFalse(Account.objects.filter(owner_id=child.id).exists())
+        self.assertFalse(Guardianship.objects.filter(child_id=child.id).exists())
+        self.assertFalse(AllowanceRule.objects.filter(child_id=child.id).exists())
+        self.assertFalse(Transaction.objects.filter(idempotency_key="a:1").exists())
+
+    def test_deleting_one_of_two_guardians_keeps_the_child(self):
+        mom = User.objects.create_user(username="mom", password="pw12345678", role=User.PARENT)
+        dad = User.objects.create_user(username="dad", password="pw12345678", role=User.PARENT)
+        child = User.objects.create_user(username="kid", password="pw12345678", role=User.CHILD)
+        Guardianship.objects.create(parent=mom, child=child, is_creator=True)
+        Guardianship.objects.create(parent=dad, child=child)
+        LedgerService.allowance(
+            child_account=child.account, parent_account=dad.account,
+            amount=Decimal("10.00"), description="allowance", idempotency_key="a:1",
+        )
+
+        self.client.force_authenticate(user=mom)
+        resp = self.client.delete(reverse("users-detail", args=[mom.id]))
+        self.assertEqual(resp.status_code, status.HTTP_204_NO_CONTENT)
+
+        self.assertFalse(User.objects.filter(id=mom.id).exists())
+        self.assertTrue(User.objects.filter(id=child.id).exists())
+        self.assertEqual(list(Guardianship.objects.filter(child_id=child.id).values_list("parent_id", flat=True)), [dad.id])
+        # dad's contribution is untouched -- only mom's link/account vanished.
+        self.assertTrue(Transaction.objects.filter(idempotency_key="a:1").exists())
+        child.account.refresh_from_db()
+        self.assertEqual(child.account.balance, Decimal("10.00"))
+
+    def test_parent_cannot_delete_another_unrelated_users_account(self):
+        """An unrelated parent isn't just denied -- their account is
+        entirely outside this parent's get_queryset scope, same as any
+        other unrelated-user lookup on this endpoint."""
+        parent = User.objects.create_user(username="parent", password="pw12345678", role=User.PARENT)
+        other = User.objects.create_user(username="other", password="pw12345678", role=User.PARENT)
+        self.client.force_authenticate(user=parent)
+        resp = self.client.delete(reverse("users-detail", args=[other.id]))
+        self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertTrue(User.objects.filter(id=other.id).exists())
+
+    def test_creator_parent_can_delete_childs_account_directly(self):
+        parent = User.objects.create_user(username="parent", password="pw12345678", role=User.PARENT)
+        child = User.objects.create_user(username="kid", password="pw12345678", role=User.CHILD)
+        Guardianship.objects.create(parent=parent, child=child, is_creator=True)
+        AllowanceRule.objects.create(
+            child=child, funding_parent=parent, amount=Decimal("5.00"), weekday=0, hour=9,
+        )
+        LedgerService.allowance(
+            child_account=child.account, parent_account=parent.account,
+            amount=Decimal("10.00"), description="allowance", idempotency_key="a:1",
+        )
+
+        self.client.force_authenticate(user=parent)
+        resp = self.client.delete(reverse("users-detail", args=[child.id]))
+        self.assertEqual(resp.status_code, status.HTTP_204_NO_CONTENT)
+
+        self.assertTrue(User.objects.filter(id=parent.id).exists())
+        self.assertFalse(User.objects.filter(id=child.id).exists())
+        self.assertFalse(Account.objects.filter(owner_id=child.id).exists())
+        self.assertFalse(AllowanceRule.objects.filter(child_id=child.id).exists())
+        self.assertFalse(Transaction.objects.filter(idempotency_key="a:1").exists())
+
+    def test_non_creator_guardian_cannot_delete_childs_account_directly(self):
+        """Only the parent who created the child's account can delete it
+        outright -- a co-guardian who merely linked themselves later can
+        only remove their own guardianship link, never delete the child
+        (see test_non_creator_guardian_can_remove_own_guardianship below)."""
+        creator = User.objects.create_user(username="creator", password="pw12345678", role=User.PARENT)
+        co_guardian = User.objects.create_user(username="co-guardian", password="pw12345678", role=User.PARENT)
+        child = User.objects.create_user(username="kid", password="pw12345678", role=User.CHILD)
+        Guardianship.objects.create(parent=creator, child=child, is_creator=True)
+        Guardianship.objects.create(parent=co_guardian, child=child)
+        self.client.force_authenticate(user=co_guardian)
+        resp = self.client.delete(reverse("users-detail", args=[child.id]))
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertTrue(User.objects.filter(id=child.id).exists())
+
+    def test_non_creator_guardian_can_remove_own_guardianship(self):
+        creator = User.objects.create_user(username="creator", password="pw12345678", role=User.PARENT)
+        co_guardian = User.objects.create_user(username="co-guardian", password="pw12345678", role=User.PARENT)
+        child = User.objects.create_user(username="kid", password="pw12345678", role=User.CHILD)
+        Guardianship.objects.create(parent=creator, child=child, is_creator=True)
+        link = Guardianship.objects.create(parent=co_guardian, child=child)
+        self.client.force_authenticate(user=co_guardian)
+        resp = self.client.delete(reverse("guardianships-detail", args=[link.id]))
+        self.assertEqual(resp.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Guardianship.objects.filter(id=link.id).exists())
+        # The child and the creator's own link are untouched.
+        self.assertTrue(User.objects.filter(id=child.id).exists())
+        self.assertTrue(Guardianship.objects.filter(parent=creator, child=child).exists())
+
+    def test_anonymous_cannot_delete_an_account(self):
+        parent = User.objects.create_user(username="parent", password="pw12345678", role=User.PARENT)
+        resp = self.client.delete(reverse("users-detail", args=[parent.id]))
+        self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertTrue(User.objects.filter(id=parent.id).exists())

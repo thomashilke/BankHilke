@@ -17,6 +17,7 @@ export interface User {
   role: Role;
   is_staff: boolean;
   language: Language;
+  has_usable_password: boolean;
 }
 
 export interface Guardianship {
@@ -25,6 +26,7 @@ export interface Guardianship {
   parent_username: string;
   child: number;
   child_username: string;
+  is_creator: boolean;
   created_at: string;
 }
 

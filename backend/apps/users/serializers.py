@@ -10,9 +10,9 @@ class UserSerializer(serializers.ModelSerializer):
         choices=Account.Currency.choices,
         write_only=True,
         required=False,
-        default=Account.Currency.USD,
-        help_text="Display currency for this user's account -- for presentation only, no conversion is ever performed.",
+        help_text="Display currency for this user's account -- for presentation only, no conversion is performed.",
     )
+    has_usable_password = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -28,8 +28,16 @@ class UserSerializer(serializers.ModelSerializer):
             "currency",
             "is_staff",
             "language",
+            "has_usable_password",
         ]
         read_only_fields = ["id", "is_staff"]
+
+    def get_has_usable_password(self, obj):
+        """False for accounts created solely via Google sign-in (see
+        apps.users.services.GoogleAuthService._create_parent) -- the
+        frontend uses this to hide the "change password" control, since
+        there's no password to change."""
+        return obj.has_usable_password()
 
     def create(self, validated_data):
         currency = validated_data.pop("currency", Account.Currency.USD)
@@ -66,8 +74,8 @@ class GuardianshipSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Guardianship
-        fields = ["id", "parent", "parent_username", "child", "child_username", "username", "created_at"]
-        read_only_fields = ["id", "parent", "created_at"]
+        fields = ["id", "parent", "parent_username", "child", "child_username", "username", "is_creator", "created_at"]
+        read_only_fields = ["id", "parent", "is_creator", "created_at"]
 
     def validate_child(self, value):
         if value.role != User.CHILD:

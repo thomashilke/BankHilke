@@ -11,7 +11,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from api.permissions import IsAdminParent, IsParent
 from apps.users.models import Guardianship, User
 from apps.users.serializers import ChangePasswordSerializer, GuardianshipSerializer, UserSerializer
-from apps.users.services import GoogleAuthService, InvalidGoogleTokenError
+from apps.users.services import AccountDeletionService, GoogleAuthService, InvalidGoogleTokenError
 
 
 class IsSelfOrGuardianParent(permissions.BasePermission):
@@ -25,6 +25,26 @@ class IsSelfOrGuardianParent(permissions.BasePermission):
         return user.role == User.PARENT and Guardianship.objects.filter(parent=user, child=obj).exists()
 
 
+class CanDeleteAccount(permissions.BasePermission):
+    """Deletion is parent-only, never self-service for a child (children
+    can never delete any account, including their own -- see AccountDeletionTests).
+
+    A parent may always delete their own account. A parent may delete a
+    *child's* account only if they created it (Guardianship.is_creator) --
+    a co-guardian who didn't create the account can only remove themselves
+    from the guardianship (DELETE /guardianships/{id}/), never delete the
+    child outright (see AccountDeletionService for what deleting a parent
+    cascades onto their guarded children)."""
+
+    def has_object_permission(self, request, view, obj):
+        user = request.user
+        if user.role != User.PARENT:
+            return False
+        if obj == user:
+            return True
+        return Guardianship.objects.filter(parent=user, child=obj, is_creator=True).exists()
+
+
 class UserViewSet(ModelViewSet):
 
     serializer_class = UserSerializer
@@ -35,7 +55,9 @@ class UserViewSet(ModelViewSet):
             # further gated inside perform_create (must be an authenticated
             # parent, who becomes the child's first guardian).
             return [permissions.AllowAny()]
-        if self.action in ("retrieve", "update", "partial_update", "destroy"):
+        if self.action == "destroy":
+            return [permissions.IsAuthenticated(), CanDeleteAccount()]
+        if self.action in ("retrieve", "update", "partial_update"):
             return [permissions.IsAuthenticated(), IsSelfOrGuardianParent()]
         if self.action == "all":
             return [permissions.IsAuthenticated(), IsAdminParent()]
@@ -78,7 +100,7 @@ class UserViewSet(ModelViewSet):
             if not (requester.is_authenticated and requester.role == User.PARENT):
                 raise PermissionDenied("only an authenticated parent can create a child account")
             child = serializer.save()
-            Guardianship.objects.create(parent=requester, child=child)
+            Guardianship.objects.create(parent=requester, child=child, is_creator=True)
             return
         if requester.is_authenticated:
             # Anonymous requests fall straight through to open self-registration
@@ -89,6 +111,9 @@ class UserViewSet(ModelViewSet):
                     "only a parent with administrative rights can create another parent account"
                 )
         serializer.save()
+
+    def perform_destroy(self, instance):
+        AccountDeletionService.delete_user(instance)
 
 
 class GuardianshipViewSet(ModelViewSet):

@@ -66,6 +66,16 @@ class Guardianship(models.Model):
         limit_choices_to={"role": User.CHILD},
     )
 
+    is_creator = models.BooleanField(
+        default=False,
+        help_text="Whether this guardian is the parent who registered the "
+                   "child's account (set once, at creation -- see "
+                   "UserViewSet.perform_create). Only the creator may delete "
+                   "the child's account outright; every other guardian can "
+                   "only remove themselves from the guardianship (see "
+                   "apps.users.views.CanDeleteAccount).",
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

@@ -65,6 +65,8 @@ const fr: Translation = {
     language: "Langue",
     changePassword: "Changer le mot de passe",
     manageUsers: "G\u00e9rer les utilisateurs",
+    settings: "Param\u00e8tres",
+    accountMenu: "Menu du compte",
   },
   login: {
     heading: "Connectez-vous \u00e0 votre compte",
@@ -92,7 +94,6 @@ const fr: Translation = {
     dashboardTitle: "Enfants sous votre tutelle",
     dashboardSubtitle:
       "D\u00e9posez ou retirez des fonds, g\u00e9rez les calendriers d'argent de poche et d'int\u00e9r\u00eats, et consultez la r\u00e9partition entre tuteurs.",
-    addParentButton: "+ Ajouter un parent",
     addChildButton: "+ Ajouter un enfant",
     loadError: "Impossible de charger vos enfants.",
     loadingChildren: "Chargement des enfants",
@@ -123,14 +124,6 @@ const fr: Translation = {
     submitting: "Cr\u00e9ation\u2026",
     submit: "Cr\u00e9er le compte enfant",
     error: "Impossible de cr\u00e9er le compte enfant.",
-  },
-  addParent: {
-    title: "Ajouter un parent",
-    subtitle: "Cr\u00e9e un identifiant pour un autre parent -- n\u00e9cessite des droits d'administration",
-    usernamePlaceholder: "ex. papa",
-    submitting: "Cr\u00e9ation\u2026",
-    submit: "Cr\u00e9er le compte parent",
-    error: "Impossible de cr\u00e9er le compte parent.",
   },
   errors: {
     passwordTooShort: "Le mot de passe doit comporter au moins 8 caract\u00e8res.",
@@ -239,6 +232,35 @@ const fr: Translation = {
     yes: "Oui",
     no: "Non",
     empty: "Aucun utilisateur trouv\u00e9.",
+  },
+  settings: {
+    backLink: "\u2190 Retour au tableau de bord",
+    pageTitle: "Param\u00e8tres",
+    pageSubtitle: "G\u00e9rez votre langue, votre mot de passe et votre compte.",
+    languageSubtitle: "Choisissez la langue utilis\u00e9e dans toute l'application.",
+    manageUsersSubtitle: "Consultez tous les comptes parents et enfants de la plateforme.",
+    addChildTitle: "Ajouter un enfant",
+    addChildSubtitle: "Cr\u00e9ez un compte bancaire pour un autre enfant sous votre tutelle.",
+    manageUsersLink: "Ouvrir l'annuaire des utilisateurs",
+    dangerTitle: "Zone de danger",
+    dangerSubtitle: "Supprimez d\u00e9finitivement votre compte. Cette action est irr\u00e9versible.",
+    deleteAccountButton: "Supprimer mon compte",
+    deletingAccount: "Suppression\u2026",
+    deleteAccountConfirm:
+      "Supprimer d\u00e9finitivement votre compte\u00a0? Cette action est irr\u00e9versible. Si vous \u00eates l'unique tuteur d'un enfant, le compte de cet enfant et tout son historique seront \u00e9galement supprim\u00e9s.",
+    deleteAccountError: "Impossible de supprimer votre compte. Veuillez r\u00e9essayer.",
+    childAccountsTitle: "Enfants",
+    childAccountsSubtitle:
+      "Supprimez le compte d'un enfant si vous l'avez cr\u00e9\u00e9, ou retirez-vous en tant que tuteur si ce n'est pas le cas.",
+    deleteChildButton: "Supprimer le compte",
+    deleteChildConfirm:
+      "Supprimer d\u00e9finitivement le compte de {{name}}\u00a0? Cette action est irr\u00e9versible et tout son historique de transactions sera \u00e9galement supprim\u00e9.",
+    deleteChildError: "Impossible de supprimer le compte de cet enfant. Veuillez r\u00e9essayer.",
+    removeGuardianButton: "Me retirer en tant que tuteur",
+    removingGuardian: "Retrait\u2026",
+    removeGuardianConfirm:
+      "Vous retirer en tant que tuteur de {{name}}\u00a0? Vous ne pourrez plus g\u00e9rer ni consulter son compte.",
+    removeGuardianError: "Impossible de vous retirer en tant que tuteur. Veuillez r\u00e9essayer.",
   },
 };
 

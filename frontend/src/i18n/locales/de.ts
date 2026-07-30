@@ -65,6 +65,8 @@ const de: Translation = {
     language: "Sprache",
     changePassword: "Passwort \u00e4ndern",
     manageUsers: "Benutzer verwalten",
+    settings: "Einstellungen",
+    accountMenu: "Kontomen\u00fc",
   },
   login: {
     heading: "Bei Ihrem Konto anmelden",
@@ -92,7 +94,6 @@ const de: Translation = {
     dashboardTitle: "Kinder unter Ihrer Vormundschaft",
     dashboardSubtitle:
       "Zahlen Sie Geld ein oder aus, verwalten Sie Taschengeld- und Zinspl\u00e4ne und pr\u00fcfen Sie die Aufteilung zwischen den Erziehungsberechtigten.",
-    addParentButton: "+ Elternteil hinzuf\u00fcgen",
     addChildButton: "+ Kind hinzuf\u00fcgen",
     loadError: "Ihre Kinder konnten nicht geladen werden.",
     loadingChildren: "Kinder werden geladen",
@@ -123,14 +124,6 @@ const de: Translation = {
     submitting: "Wird erstellt\u2026",
     submit: "Kinderkonto erstellen",
     error: "Das Kinderkonto konnte nicht erstellt werden.",
-  },
-  addParent: {
-    title: "Elternteil hinzuf\u00fcgen",
-    subtitle: "Erstellt einen Zugang f\u00fcr einen weiteren Elternteil -- erfordert Administratorrechte",
-    usernamePlaceholder: "z. B. papa",
-    submitting: "Wird erstellt\u2026",
-    submit: "Elternkonto erstellen",
-    error: "Das Elternkonto konnte nicht erstellt werden.",
   },
   errors: {
     passwordTooShort: "Das Passwort muss mindestens 8 Zeichen lang sein.",
@@ -239,6 +232,35 @@ const de: Translation = {
     yes: "Ja",
     no: "Nein",
     empty: "Keine Benutzer gefunden.",
+  },
+  settings: {
+    backLink: "\u2190 Zur\u00fcck zum Dashboard",
+    pageTitle: "Einstellungen",
+    pageSubtitle: "Verwalten Sie Ihre Sprache, Ihr Passwort und Ihr Konto.",
+    languageSubtitle: "W\u00e4hlen Sie die in der gesamten App verwendete Sprache.",
+    manageUsersSubtitle: "Sehen Sie alle Eltern- und Kinderkonten der Plattform ein.",
+    addChildTitle: "Kind hinzuf\u00fcgen",
+    addChildSubtitle: "Erstellen Sie ein Bankkonto f\u00fcr ein weiteres Kind unter Ihrer Vormundschaft.",
+    manageUsersLink: "Benutzerverzeichnis \u00f6ffnen",
+    dangerTitle: "Gefahrenzone",
+    dangerSubtitle: "L\u00f6schen Sie Ihr Konto dauerhaft. Dies kann nicht r\u00fcckg\u00e4ngig gemacht werden.",
+    deleteAccountButton: "Mein Konto l\u00f6schen",
+    deletingAccount: "Wird gel\u00f6scht\u2026",
+    deleteAccountConfirm:
+      "Ihr Konto dauerhaft l\u00f6schen? Dies kann nicht r\u00fcckg\u00e4ngig gemacht werden. Wenn Sie der einzige Vormund eines Kindes sind, werden auch das Konto dieses Kindes und dessen gesamter Verlauf gel\u00f6scht.",
+    deleteAccountError: "Ihr Konto konnte nicht gel\u00f6scht werden. Bitte versuchen Sie es erneut.",
+    childAccountsTitle: "Kinder",
+    childAccountsSubtitle:
+      "L\u00f6schen Sie das Konto eines Kindes, wenn Sie es erstellt haben, oder entfernen Sie sich als Vormund, wenn nicht.",
+    deleteChildButton: "Konto l\u00f6schen",
+    deleteChildConfirm:
+      "Das Konto von {{name}} dauerhaft l\u00f6schen? Dies kann nicht r\u00fcckg\u00e4ngig gemacht werden, und der gesamte Transaktionsverlauf wird ebenfalls gel\u00f6scht.",
+    deleteChildError: "Das Konto dieses Kindes konnte nicht gel\u00f6scht werden. Bitte versuchen Sie es erneut.",
+    removeGuardianButton: "Mich als Vormund entfernen",
+    removingGuardian: "Wird entfernt\u2026",
+    removeGuardianConfirm:
+      "Sich als Vormund von {{name}} entfernen? Sie k\u00f6nnen das Konto danach nicht mehr verwalten oder einsehen.",
+    removeGuardianError: "Sie konnten nicht als Vormund entfernt werden. Bitte versuchen Sie es erneut.",
   },
 };
 

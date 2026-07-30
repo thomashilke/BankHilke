@@ -66,6 +66,8 @@ const en = {
     language: "Language",
     changePassword: "Change password",
     manageUsers: "Manage users",
+    settings: "Settings",
+    accountMenu: "Account menu",
   },
   login: {
     heading: "Sign in to your account",
@@ -92,7 +94,6 @@ const en = {
     dashboardTitle: "Children under your guardianship",
     dashboardSubtitle:
       "Deposit or withdraw funds, manage allowance and interest schedules, and review guardian contributions.",
-    addParentButton: "+ Add parent",
     addChildButton: "+ Add child",
     loadError: "Could not load your children.",
     loadingChildren: "Loading children",
@@ -123,14 +124,6 @@ const en = {
     submitting: "Creating\u2026",
     submit: "Create child account",
     error: "Could not create child account.",
-  },
-  addParent: {
-    title: "Add a parent",
-    subtitle: "Creates a login for another parent -- requires administrative rights",
-    usernamePlaceholder: "e.g. dad",
-    submitting: "Creating\u2026",
-    submit: "Create parent account",
-    error: "Could not create parent account.",
   },
   errors: {
     passwordTooShort: "Password must be at least 8 characters.",
@@ -239,6 +232,35 @@ const en = {
     yes: "Yes",
     no: "No",
     empty: "No users found.",
+  },
+  settings: {
+    backLink: "\u2190 Back to dashboard",
+    pageTitle: "Settings",
+    pageSubtitle: "Manage your language, password, and account.",
+    languageSubtitle: "Choose the language used throughout the app.",
+    manageUsersSubtitle: "View every parent and child account on the platform.",
+    addChildTitle: "Add a child",
+    addChildSubtitle: "Create a banking account for another child in your guardianship.",
+    manageUsersLink: "Open user directory",
+    dangerTitle: "Danger zone",
+    dangerSubtitle: "Permanently delete your account. This cannot be undone.",
+    deleteAccountButton: "Delete my account",
+    deletingAccount: "Deleting\u2026",
+    deleteAccountConfirm:
+      "Permanently delete your account? This cannot be undone. If you are a child's only guardian, that child's account and all of its history will be deleted too.",
+    deleteAccountError: "Could not delete your account. Please try again.",
+    childAccountsTitle: "Children",
+    childAccountsSubtitle:
+      "Delete a child's account if you created it, or remove yourself as guardian if you didn't.",
+    deleteChildButton: "Delete account",
+    deleteChildConfirm:
+      "Permanently delete {{name}}'s account? This cannot be undone, and their entire transaction history will be deleted too.",
+    deleteChildError: "Could not delete this child's account. Please try again.",
+    removeGuardianButton: "Remove myself as guardian",
+    removingGuardian: "Removing\u2026",
+    removeGuardianConfirm:
+      "Remove yourself as {{name}}'s guardian? You will no longer be able to manage or view their account.",
+    removeGuardianError: "Could not remove you as guardian. Please try again.",
   },
 };
 

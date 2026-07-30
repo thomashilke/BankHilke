@@ -59,3 +59,14 @@ to a differently-originated backend).
 - `src/pages/parent/` — children list, per-child deposit/withdraw, allowance
   and interest rule editors, and the shared-guardianship reconciliation
   panel (`accounts/{id}/reconciliation/`).
+- `src/pages/SettingsPage.tsx` — regroups every account-level control
+  (language, creating a new child, change password, sign out, the admin
+  user directory link) plus the app's one destructive operation:
+  self-service account deletion (`DELETE /users/{id}/`). Parent accounts
+  are no longer created by other parents here -- registration is
+  self-service (Google, see `GoogleSignInButton` above). `NavBar` itself is
+  just branding plus an avatar/name button that opens a two-entry dropdown
+  (Settings, Log out).
+- `src/pages/admin/AdminUsersPage.tsx` — full cross-guardianship user
+  directory, reachable only by parents with `is_staff` (`GET /users/all/`);
+  linked from the Settings page rather than the navbar.

@@ -7,6 +7,7 @@ import { ParentDashboard } from "./pages/parent/ParentDashboard";
 import { ChildDetail } from "./pages/parent/ChildDetail";
 import { QuickActionPage } from "./pages/parent/QuickActionPage";
 import { AdminUsersPage } from "./pages/admin/AdminUsersPage";
+import { SettingsPage } from "./pages/SettingsPage";
 
 function RoleHome() {
   const { user } = useAuth();
@@ -65,6 +66,14 @@ export default function App() {
         element={
           <ProtectedRoute role="parent" requireAdmin>
             <AdminUsersPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <ProtectedRoute>
+            <SettingsPage />
           </ProtectedRoute>
         }
       />
